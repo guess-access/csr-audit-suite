@@ -1,0 +1,43 @@
+[build]
+  publish = "."
+  command = ""
+
+# Functions directory. NOTE: this must be the [functions] section -
+# "functions" is not a valid key under [build] (valid keys there are only
+# base, publish, command, environment, processing).
+[functions]
+  directory = "netlify/functions"
+
+# Function pass-through MUST come before the SPA catch-all below.
+# Redirect rules are processed top-to-bottom and the first match wins;
+# without this rule, "/*" rewrites /api/* (and /.netlify/functions/*)
+# to index.html, so the browser receives HTML instead of JSON.
+# Docs: https://docs.netlify.com/manage/routing/redirects/overview/
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA catch-all: any path without a matching static file serves index.html.
+# Keep this rule last.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers. Correct schema is [[headers]] (array of tables) with
+# "for" and a [headers.values] map - a bare [headers] table is invalid and
+# can break the "Post processing - header rules" deploy phase.
+# Docs: https://docs.netlify.com/manage/routing/headers/
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=()"
+
+[context.production]
+  command = ""
+  publish = "."

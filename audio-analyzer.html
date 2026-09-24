@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSR Call Evaluator — Upload &amp; Auto-Score Call Recordings</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1a2a4a;
+            --navy-light: #243355;
+            --red: #c0392b;
+            --red-light: #e74c3c;
+            --green: #1e7e4a;
+            --green-light: #27ae60;
+            --gold: #d4a017;
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --border: #dde1e9;
+            --text: #1c2333;
+            --muted: #5a6478;
+            --pass-bg: #eafaf1;
+            --fail-bg: #fdf0ee;
+            --radius: 10px;
+            --shadow: 0 2px 12px rgba(26, 42, 74, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            background: var(--navy);
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid var(--red);
+            gap: 16px;
+        }
+        .header-title {
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .header-sub {
+            color: white;
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.7;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .home-link {
+            color: white;
+            font-size: 12px;
+            text-decoration: none;
+            opacity: 0.8;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            padding: 7px 14px;
+            border-radius: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .home-link:hover { background: rgba(255, 255, 255, 0.12); opacity: 1; }
+
+        .main { max-width: 920px; margin: 0 auto; padding: 28px 20px 70px; }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px 24px;
+            margin-bottom: 20px;
+        }
+        .card-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+
+        /* STEPS */
+        .steps {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 9px 6px;
+            border-radius: 7px;
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .step.active {
+            background: var(--navy);
+            border-color: var(--navy);
+            color: white;
+        }
+        .step.done {
+            background: var(--pass-bg);
+            border-color: #a9dfbf;
+            color: var(--green);
+        }
+
+        /* UPLOAD */
+        .dropzone {
+            border: 2px dashed var(--navy);
+            border-radius: var(--radius);
+            background: #fbfcfd;
+            padding: 34px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            background: #eef2f9;
+            border-color: var(--red);
+        }
+        .dropzone-icon { font-size: 40px; margin-bottom: 10px; }
+        .dropzone-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .dropzone-sub { font-size: 13px; color: var(--muted); }
+        #audioInput { display: none; }
+
+        .file-chip {
+            display: none;
+            align-items: center;
+            gap: 14px;
+            background: var(--pass-bg);
+            border: 1px solid #a9dfbf;
+            border-radius: var(--radius);
+            padding: 14px 16px;
+        }
+        .file-chip.show { display: flex; }
+        .file-chip .f-icon { font-size: 26px; }
+        .file-chip .f-meta { flex: 1; min-width: 0; }
+        .file-chip .f-name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-chip .f-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .file-chip .f-remove {
+            background: none;
+            border: 1.5px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            color: var(--muted);
+        }
+        .file-chip .f-remove:hover { border-color: var(--red); color: var(--red); }
+
+        .fallback-link {
+            display: block;
+            text-align: center;
+            margin-top: 14px;
+            font-size: 12.5px;
+        }
+        .fallback-link a { color: var(--navy); cursor: pointer; text-decoration: underline; }
+        .fallback-box { display: none; margin-top: 14px; }
+        .fallback-box.show { display: block; }
+        .fallback-box textarea {
+            width: 100%;
+            min-height: 130px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 12px;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 13px;
+            resize: vertical;
+            outline: none;
+        }
+        .fallback-box textarea:focus { border-color: var(--navy); }
+
+        /* META GRID */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+        .meta-field label {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .meta-field input {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--text);
+            background: #fbfcfd;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .meta-field input:focus { border-color: var(--navy); }
+        .meta-field input.required-missing { border-color: var(--red); background: var(--fail-bg); }
+
+        /* BUTTONS */
+        .btn {
+            padding: 12px 26px;
+            border: none;
+            border-radius: 7px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-primary { background: var(--navy); color: white; }
+        .btn-primary:hover { background: var(--navy-light); }
+        .btn-primary:disabled { background: #9aa4b8; cursor: not-allowed; }
+        .btn-red { background: var(--red); color: white; }
+        .btn-red:hover { background: var(--red-light); }
+        .btn-ghost {
+            background: white;
+            color: var(--navy);
+            border: 1.5px solid var(--border);
+        }
+        .btn-ghost:hover { border-color: var(--navy); }
+        .actions-row {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* MESSAGES */
+        .msg {
+            display: none;
+            padding: 13px 16px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+        .msg.show { display: block; }
+        .msg.error { background: var(--fail-bg); border: 1px solid #f5b7b1; color: #7c1d12; }
+        .msg.success { background: var(--pass-bg); border: 1px solid #a9dfbf; color: #14532d; }
+
+        /* PROGRESS */
+        #progressSection { display: none; text-align: center; padding: 40px 24px; }
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid #e3e7ef;
+            border-top-color: var(--red);
+            border-radius: 50%;
+            margin: 0 auto 18px;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-stage { font-size: 15px; font-weight: 600; color: var(--navy); }
+        .progress-hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+        .progress-track {
+            height: 6px;
+            background: #e3e7ef;
+            border-radius: 3px;
+            margin: 20px auto 0;
+            max-width: 380px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 15%;
+            background: linear-gradient(90deg, var(--navy), var(--red));
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* RESULTS */
+        #resultsSection { display: none; }
+
+        .grade-banner {
+            border-radius: var(--radius);
+            border: 2px solid var(--border);
+            background: var(--card);
+            padding: 24px 26px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+        }
+        .grade-banner.pass { background: var(--pass-bg); border-color: var(--green-light); }
+        .grade-banner.fail { background: var(--fail-bg); border-color: var(--red-light); }
+        .grade-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+        .grade-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 52px;
+            font-weight: 600;
+            line-height: 1.05;
+            color: var(--muted);
+        }
+        .grade-banner.pass .grade-value { color: var(--green); }
+        .grade-banner.fail .grade-value { color: var(--red); }
+        .grade-status { font-size: 13.5px; font-weight: 600; margin-top: 4px; color: var(--muted); }
+        .grade-banner.pass .grade-status { color: var(--green); }
+        .grade-banner.fail .grade-status { color: var(--red); }
+        .grade-right { text-align: right; min-width: 240px; }
+        .grade-right .thresh { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .pts-label { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+        .prog-track {
+            height: 9px;
+            background: #e3e7ef;
+            border-radius: 5px;
+            overflow: hidden;
+            width: 240px;
+            margin-left: auto;
+        }
+        .prog-fill { height: 100%; width: 0; background: var(--muted); border-radius: 5px; transition: width 0.6s ease; }
+        .prog-fill.pass { background: var(--green-light); }
+        .prog-fill.fail { background: var(--red-light); }
+
+        .autofail-banner {
+            display: none;
+            background: var(--red);
+            color: white;
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 18px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .autofail-banner.show { display: block; }
+
+        /* SUMMARY STRIP */
+        .summary-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .summary-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--navy);
+            border-radius: 7px;
+            padding: 10px 12px;
+        }
+        .summary-item .k {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            margin-bottom: 3px;
+        }
+        .summary-item .v { font-size: 13px; font-weight: 600; word-break: break-word; }
+
+        /* SECTIONS + METRICS */
+        .qa-section { margin-bottom: 18px; }
+        .qa-section-header {
+            background: var(--navy);
+            color: white;
+            padding: 11px 16px;
+            border-radius: var(--radius) var(--radius) 0 0;
+            font-size: 13.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .qa-section-header.zero { background: var(--red); }
+        .qa-section-header .sec-pts {
+            margin-left: auto;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            opacity: 0.85;
+        }
+        .qa-rows {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            box-shadow: var(--shadow);
+        }
+        .qa-row {
+            display: grid;
+            grid-template-columns: 30px 1fr 96px;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            align-items: start;
+        }
+        .qa-row:last-child { border-bottom: none; }
+        .qa-row.passed { background: var(--pass-bg); }
+        .qa-row.failed { background: var(--fail-bg); }
+        .row-num {
+            width: 26px;
+            height: 26px;
+            background: var(--navy-light);
+            color: white;
+            border-radius: 50%;
+            font-size: 11.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .qa-row.failed .row-num { background: var(--red); }
+        .row-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+        .row-criteria { font-size: 12px; color: var(--muted); line-height: 1.45; }
+        .row-obs {
+            font-size: 12.5px;
+            color: var(--text);
+            margin-top: 7px;
+            line-height: 1.5;
+            padding-left: 10px;
+            border-left: 2px solid var(--border);
+        }
+        .row-rec {
+            font-size: 12.5px;
+            color: #8a4b00;
+            margin-top: 6px;
+            line-height: 1.5;
+            background: #fff8ec;
+            border: 1px solid #f3dfc0;
+            border-radius: 6px;
+            padding: 7px 9px;
+        }
+        .row-rec b { color: #a35b00; }
+        .row-right { text-align: center; }
+        .pts-chip {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--navy);
+        }
+        .pts-chip .den { font-size: 11px; color: var(--muted); font-weight: 500; }
+        .status-chip {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .status-chip.pass { background: var(--green-light); color: white; }
+        .status-chip.partial { background: var(--gold); color: white; }
+        .status-chip.fail, .status-chip.auto-fail { background: var(--red); color: white; }
+        .status-chip.na, .status-chip.not-observed { background: #dde1e9; color: var(--muted); }
+
+        /* COACHING */
+        .feedback-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 6px;
+        }
+        .feedback-box {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            padding: 15px 16px;
+            box-shadow: var(--shadow);
+        }
+        .feedback-box h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .feedback-box.strengths { border-top: 3px solid var(--green-light); }
+        .feedback-box.strengths h4 { color: var(--green); }
+        .feedback-box.opps { border-top: 3px solid var(--gold); }
+        .feedback-box.opps h4 { color: #9a7200; }
+        .feedback-box.concerns { border-top: 3px solid var(--red-light); }
+        .feedback-box.concerns h4 { color: var(--red); }
+        .feedback-box ul { list-style: none; }
+        .feedback-box li {
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 5px 0 5px 18px;
+            position: relative;
+            border-bottom: 1px dashed var(--border);
+        }
+        .feedback-box li:last-child { border-bottom: none; }
+        .feedback-box li::before { content: '•'; position: absolute; left: 4px; color: var(--muted); }
+        .feedback-box .empty { font-size: 12.5px; color: var(--muted); font-style: italic; }
+
+        .coach-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            margin-bottom: 14px;
+        }
+        .coach-card h3 {
+            font-size: 15px;
+            color: var(--navy);
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .action-item {
+            display: flex;
+            gap: 12px;
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 12px 14px;
+            margin-bottom: 9px;
+        }
+        .action-item:last-child { margin-bottom: 0; }
+        .action-num {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            background: var(--navy);
+            color: white;
+            border-radius: 50%;
+            font-size: 11.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-text { font-size: 13.5px; line-height: 1.55; }
+        .suggestion-item {
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--red);
+            border-radius: 7px;
+            padding: 12px 14px;
+            margin-bottom: 9px;
+        }
+        .suggestion-item:last-child { margin-bottom: 0; }
+        .suggestion-area {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--red);
+            margin-bottom: 5px;
+        }
+        .suggestion-text { font-size: 13.5px; line-height: 1.55; }
+        .suggestion-example {
+            font-size: 13px;
+            color: var(--navy);
+            background: #eef2f9;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-top: 8px;
+            font-style: italic;
+            line-height: 1.5;
+        }
+        .suggestion-example::before { content: 'Say it like this: '; font-weight: 600; font-style: normal; }
+        .coaching-notes {
+            width: 100%;
+            min-height: 140px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 13px 14px;
+            font-family: inherit;
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: var(--text);
+            background: #fbfcfd;
+            resize: vertical;
+        }
+
+        details.transcript { margin-top: 4px; }
+        details.transcript summary {
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--navy);
+            padding: 10px 0;
+            user-select: none;
+        }
+        .transcript-box {
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.65;
+            color: var(--text);
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .ai-note {
+            font-size: 11.5px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 16px;
+            font-style: italic;
+        }
+
+        @media (max-width: 760px) {
+            .meta-grid { grid-template-columns: 1fr 1fr; }
+            .feedback-grid { grid-template-columns: 1fr; }
+            .qa-row { grid-template-columns: 26px 1fr; }
+            .row-right { grid-column: 2; text-align: left; display: flex; gap: 10px; align-items: center; }
+            .status-chip { margin-top: 0; }
+            .grade-right { text-align: left; }
+            .prog-track { margin-left: 0; }
+            .steps { flex-direction: column; }
+        }
+
+        @media print {
+            body { background: white; }
+            .header, .actions-row, #uploadSection, #infoSection, #progressSection,
+            .fallback-link, .ai-note, .no-print { display: none !important; }
+            .card, .qa-rows, .grade-banner, .coach-card, .feedback-box { box-shadow: none; }
+            .qa-row { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="header-title">CSR Call Evaluator</div>
+        <div class="header-sub">Upload · Transcribe · Score against QA Form</div>
+    </div>
+    <a class="home-link" href="index.html">← Suite Home</a>
+</div>
+
+<div class="main">
+
+    <div class="steps" id="stepsBar">
+        <div class="step active" id="step1">1 · Upload Recording</div>
+        <div class="step" id="step2">2 · Call Details</div>
+        <div class="step" id="step3">3 · Evaluation &amp; Coaching</div>
+    </div>
+
+    <div id="errorMessage" class="msg error"></div>
+    <div id="successMessage" class="msg success"></div>
+
+    <!-- STEP 1: UPLOAD -->
+    <div class="card" id="uploadSection">
+        <div class="card-label">Call Recording</div>
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">🎙️</div>
+            <div class="dropzone-title">Upload Call Recording</div>
+            <div class="dropzone-sub">Click to select or drag an MP3 file here · max 3&nbsp;MB (≈ 3-minute call)</div>
+            <input type="file" id="audioInput" accept="audio/mpeg,audio/mp3,.mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a,.mp4,.m4a,.wav">
+        </div>
+
+        <div class="file-chip" id="fileChip">
+            <div class="f-icon">🎵</div>
+            <div class="f-meta">
+                <div class="f-name" id="fileName"></div>
+                <div class="f-sub" id="fileSub"></div>
+            </div>
+            <button type="button" class="f-remove" id="fileRemove">Change</button>
+        </div>
+
+        <span class="fallback-link">No audio file? <a id="fallbackToggle">Paste the transcript instead</a></span>
+        <div class="fallback-box" id="fallbackBox">
+            <textarea id="manualTranscript" placeholder="Paste the call transcript here (agent and customer turns)..."></textarea>
+        </div>
+    </div>
+
+    <!-- STEP 2: CALL DETAILS -->
+    <div class="card" id="infoSection" style="display:none;">
+        <div class="card-label">Call Information</div>
+        <div class="meta-grid">
+            <div class="meta-field">
+                <label for="agentName">Agent Name *</label>
+                <input type="text" id="agentName" placeholder="Enter full name">
+            </div>
+            <div class="meta-field">
+                <label for="callDate">Call Date *</label>
+                <input type="date" id="callDate">
+            </div>
+            <div class="meta-field">
+                <label for="customerName">Customer Name</label>
+                <input type="text" id="customerName" placeholder="Customer full name">
+            </div>
+            <div class="meta-field">
+                <label for="customerPhone">Customer Phone #</label>
+                <input type="text" id="customerPhone" placeholder="(555) 000-0000">
+            </div>
+            <div class="meta-field">
+                <label for="dealership">Dealership Name</label>
+                <input type="text" id="dealership" placeholder="Dealership">
+            </div>
+            <div class="meta-field">
+                <label for="disposition">Call Disposition</label>
+                <input type="text" id="disposition" placeholder="e.g. Warm Transfer – Service">
+            </div>
+        </div>
+        <div class="actions-row" style="margin-top:18px;">
+            <button class="btn btn-ghost" id="backToUpload" type="button">← Back</button>
+            <button class="btn btn-red" id="analyzeBtn" type="button">🎯 Analyze Call &amp; Generate Score</button>
+        </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="card" id="progressSection">
+        <div class="spinner"></div>
+        <div class="progress-stage" id="progressStage">Transcribing call recording…</div>
+        <div class="progress-hint" id="progressHint">Sending audio securely to the speech-to-text service</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="resultsSection">
+        <div id="reportArea">
+
+            <div class="grade-banner" id="gradeBanner">
+                <div>
+                    <div class="grade-label">Final Grade</div>
+                    <div class="grade-value" id="gradeValue">—%</div>
+                    <div class="grade-status" id="gradeStatus"></div>
+                </div>
+                <div class="grade-right">
+                    <div class="thresh">Passing threshold: 85%</div>
+                    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+                    <div class="pts-label" id="ptsLabel">0 / 100 pts scored</div>
+                </div>
+            </div>
+
+            <div class="autofail-banner" id="autofailBanner">
+                ⚠ AUTO FAIL TRIGGERED — Zero-tolerance behavior observed. Grade is 0% and this call requires PIP enrollment review.
+            </div>
+
+            <div class="summary-strip" id="summaryStrip"></div>
+
+            <!-- Scored sections rendered here -->
+            <div id="sectionsContainer"></div>
+
+            <!-- Feedback -->
+            <div class="feedback-grid" style="margin-top:18px;">
+                <div class="feedback-box strengths">
+                    <h4>✓ Strengths Observed</h4>
+                    <ul id="strengthsList"></ul>
+                </div>
+                <div class="feedback-box opps">
+                    <h4>→ Areas for Development</h4>
+                    <ul id="oppsList"></ul>
+                </div>
+            </div>
+            <div class="feedback-box concerns" id="concernsBox" style="margin-top:14px; display:none;">
+                <h4>⚠ Concerns</h4>
+                <ul id="concernsList"></ul>
+            </div>
+
+            <!-- Coaching -->
+            <div class="coach-card" style="margin-top:18px;">
+                <h3>🧭 Coaching Plan — How to Make This Call Better</h3>
+                <div id="suggestionsContainer"></div>
+                <div id="actionsContainer" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="coach-card">
+                <h3>📝 Detailed Coaching Notes</h3>
+                <textarea class="coaching-notes" id="coachingNotes" readonly></textarea>
+            </div>
+
+            <div class="coach-card">
+                <details class="transcript">
+                    <summary>📜 View Full Call Transcript</summary>
+                    <div class="transcript-box" id="transcriptBox"></div>
+                </details>
+            </div>
+
+            <p class="ai-note">AI-generated evaluation — always verify against the recording before making coaching or HR decisions.</p>
+        </div>
+
+        <div class="actions-row" style="margin-top:18px;">
+            <button class="btn btn-ghost" id="resetBtn" type="button">🔄 Analyze Another Call</button>
+            <button class="btn btn-primary" id="pdfBtn" type="button">📥 Download Report (PDF)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    'use strict';
+
+    /* ---------------- QA form definition (mirrors the interactive form) ------------- */
+    const MAX_BYTES = 3 * 1024 * 1024; // keep in sync with netlify/functions/transcribe.js
+    const PASSING_THRESHOLD = 85;
+
+    const RUBRIC = {
+        1:  { sec: 1, pts: 10, title: 'Proper Branding',                 criteria: 'Announced the dealership name' },
+        2:  { sec: 1, pts: 10, title: 'Agent Introduction',              criteria: 'Introduced themselves by name' },
+        3:  { sec: 2, pts: 8,  title: 'Reason for Transfer',             criteria: 'Asked the customer the reason for the transfer' },
+        4:  { sec: 2, pts: 8,  title: 'Customer Name',                   criteria: "Asked for the customer's name to address them properly" },
+        5:  { sec: 2, pts: 8,  title: 'Department Introduction',         criteria: 'Introduced the customer to Service/Parts before transferring' },
+        6:  { sec: 3, pts: 8,  title: 'Warm Transfer Protocol',          criteria: 'Hold 3 rings — wait for someone to answer before releasing', hot: true },
+        7:  { sec: 3, pts: 5,  title: 'Data Entry Accuracy',             criteria: 'First and last name + phone number entered accurately' },
+        8:  { sec: 3, pts: 8,  title: 'Call Disposition',                criteria: 'Correct call disposition selected in the system' },
+        9:  { sec: 4, pts: 5,  title: 'Hold Procedure',                  criteria: 'Set expectation before placing on hold; explained reason for silence' },
+        10: { sec: 4, pts: 5,  title: 'Communication & Delivery',        criteria: 'Enunciates clearly; avoids jargon; speaks with fluidity' },
+        11: { sec: 4, pts: 5,  title: 'Empathy',                         criteria: "Acknowledged customer's emotion appropriately" },
+        12: { sec: 4, pts: 5,  title: 'Active Listening',                criteria: 'Avoided repetition; showed attention to detail' },
+        13: { sec: 4, pts: 5,  title: 'Tone of Voice',                   criteria: 'Sounded accommodating and willing to help' },
+        14: { sec: 4, pts: 5,  title: 'Efficiency',                      criteria: "Was concise in delivering resolution to customer's concern" },
+        15: { sec: 4, pts: 5,  title: 'Confidence',                      criteria: 'Sounded certain and accurate; assured the customer' },
+        16: { sec: 5, pts: 0,  title: 'Rudeness',                        criteria: 'Used profanity or condescending statement; condescending tone; consistently interrupted customer', zero: true },
+        17: { sec: 5, pts: 0,  title: 'Service Fail',                    criteria: 'Booked when policy says Do Not Book (or vice versa); incorrect appt date/time; failure to confirm transportation option; or no appointment scheduled', zero: true },
+        18: { sec: 5, pts: 0,  title: 'Call Avoidance',                  criteria: 'Disconnecting calls intentionally', zero: true }
+    };
+
+    const SECTIONS = [
+        { id: 1, name: '1 — Call Flow Procedure',        possible: 20 },
+        { id: 2, name: '2 — Body of the Call',           possible: 24 },
+        { id: 3, name: '3 — System Process Accuracy',    possible: 21 },
+        { id: 4, name: '4 — Call Management Skills',     possible: 35 },
+        { id: 5, name: '5 — Zero Tolerance Behavior',    possible: 0, zero: true }
+    ];
+
+    const STATUS_LABELS = {
+        'pass': 'Pass',
+        'partial': 'Partial',
+        'fail': 'Fail',
+        'na': 'N/A',
+        'not-observed': 'Not Observed',
+        'auto-fail': 'Auto Fail'
+    };
+
+    /* ---------------- state ---------------- */
+    let audioFile = null;
+    let analysisResults = null;
+    let currentTranscript = '';
+
+    /* ---------------- helpers ---------------- */
+    const $ = (id) => document.getElementById(id);
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function fmtBytes(n) {
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+        return (n / 1024 / 1024).toFixed(1) + ' MB';
+    }
+
+    function fmtDuration(sec) {
+        if (!isFinite(sec) || sec <= 0) return '';
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function showError(msg) {
+        const el = $('errorMessage');
+        el.textContent = msg;
+        el.classList.add('show');
+        $('successMessage').classList.remove('show');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showSuccess(msg) {
+        const el = $('successMessage');
+        el.textContent = msg;
+        el.classList.add('show');
+        $('errorMessage').classList.remove('show');
+    }
+
+    function clearMessages() {
+        $('errorMessage').classList.remove('show');
+        $('successMessage').classList.remove('show');
+    }
+
+    function setStep(n) {
+        [1, 2, 3].forEach((i) => {
+            const el = $('step' + i);
+            el.classList.toggle('active', i === n);
+            el.classList.toggle('done', i < n);
+        });
+    }
+
+    /* ---------------- upload ---------------- */
+    const dropzone = $('dropzone');
+    const audioInput = $('audioInput');
+
+    dropzone.addEventListener('click', () => audioInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    audioInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        clearMessages();
+        const okTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a'];
+        const okExt = /\.(mp3|wav|m4a|mp4)$/i.test(file.name);
+        if (!okTypes.includes(file.type) && !okExt) {
+            showError('Please upload an audio file (MP3 format recommended).');
+            return;
+        }
+        if (file.size > MAX_BYTES) {
+            showError('File is ' + fmtBytes(file.size) + ' — please use a clip under ' +
+                fmtBytes(MAX_BYTES) + ' (roughly a 3-minute call at typical MP3 quality).');
+            return;
+        }
+
+        audioFile = file;
+        $('fileName').textContent = file.name;
+        $('fileSub').textContent = fmtBytes(file.size) + ' · loading duration…';
+        $('fileChip').classList.add('show');
+        dropzone.style.display = 'none';
+        showSuccess('✓ File loaded: ' + file.name);
+
+        // Read duration for the chip (best effort).
+        try {
+            const url = URL.createObjectURL(file);
+            const probe = new Audio();
+            probe.preload = 'metadata';
+            probe.onloadedmetadata = () => {
+                const d = fmtDuration(probe.duration);
+                $('fileSub').textContent = fmtBytes(file.size) + (d ? ' · ' + d : '');
+                URL.revokeObjectURL(url);
+            };
+            probe.onerror = () => { $('fileSub').textContent = fmtBytes(file.size); URL.revokeObjectURL(url); };
+            probe.src = url;
+        } catch (err) { /* duration is cosmetic only */ }
+
+        setTimeout(() => {
+            $('uploadSection').style.display = 'none';
+            $('infoSection').style.display = 'block';
+            $('callDate').valueAsDate = new Date();
+            setStep(2);
+        }, 600);
+    }
+
+    $('fileRemove').addEventListener('click', () => resetToUpload(true));
+
+    $('backToUpload').addEventListener('click', () => resetToUpload(false));
+
+    function resetToUpload(clearFile) {
+        clearMessages();
+        if (clearFile) {
+            audioFile = null;
+            audioInput.value = '';
+            $('fileChip').classList.remove('show');
+            dropzone.style.display = 'block';
+        }
+        $('infoSection').style.display = 'none';
+        $('uploadSection').style.display = 'block';
+        setStep(1);
+    }
+
+    /* ---------------- transcript fallback toggle ---------------- */
+    $('fallbackToggle').addEventListener('click', (e) => {
+        e.preventDefault();
+        const box = $('fallbackBox');
+        box.classList.toggle('show');
+        if (box.classList.contains('show')) {
+            dropzone.style.display = 'none';
+            $('manualTranscript').focus();
+        } else if (!audioFile) {
+            dropzone.style.display = 'block';
+        }
+    });
+
+    /* ---------------- analysis pipeline ---------------- */
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function setProgress(stage, hint, pct) {
+        $('progressStage').textContent = stage;
+        $('progressHint').textContent = hint;
+        $('progressFill').style.width = pct + '%';
+    }
+
+    async function postJSON(url, body) {
+        let response;
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        } catch (err) {
+            throw new Error('Network error reaching ' + url + ' — check your connection and that the site is deployed on Netlify (functions are unavailable on plain file opens or drag-and-drop deploys).');
+        }
+        let data = null;
+        try { data = await response.json(); } catch (err) { /* non-JSON response */ }
+        if (!response.ok) {
+            throw new Error((data && data.error) || ('Request to ' + url + ' failed (HTTP ' + response.status + ')'));
+        }
+        if (!data) throw new Error('Empty response from ' + url);
+        return data;
+    }
+
+    async function analyzeCall() {
+        clearMessages();
+
+        const agentName = $('agentName').value.trim();
+        const callDate = $('callDate').value;
+        $('agentName').classList.toggle('required-missing', !agentName);
+        $('callDate').classList.toggle('required-missing', !callDate);
+
+        const manualText = $('manualTranscript').value.trim();
+
+        if (!audioFile && !manualText) {
+            showError('Please upload an MP3 recording or paste a transcript.');
+            return;
+        }
+        if (!agentName) { showError('Please enter the agent name.'); return; }
+        if (!callDate) { showError('Please enter the call date.'); return; }
+
+        $('analyzeBtn').disabled = true;
+        $('infoSection').style.display = 'none';
+        $('progressSection').style.display = 'block';
+        setStep(3);
+
+        try {
+            let transcript = manualText;
+
+            if (!transcript) {
+                setProgress('Transcribing call recording…',
+                    'Sending audio securely to the speech-to-text service', 35);
+                const base64Audio = await fileToBase64(audioFile);
+                const data = await postJSON('/api/transcribe', {
+                    audio: base64Audio,
+                    mimeType: audioFile.type || 'audio/mpeg'
+                });
+                transcript = (data.transcript || '').trim();
+                if (!transcript) throw new Error('No speech was detected in this file.');
+            }
+
+            setProgress('Scoring against the QA form…',
+                'Evaluating all 18 metrics across 5 sections and writing coaching feedback', 75);
+            const result = await postJSON('/api/analyze', {
+                transcript: transcript,
+                agentName: agentName,
+                callDate: callDate
+            });
+
+            if (!result.analysis) throw new Error('Analysis returned no results.');
+
+            analysisResults = normalizeResult(result.analysis);
+            currentTranscript = transcript;
+            setProgress('Done', '', 100);
+            renderResults();
+
+        } catch (error) {
+            $('progressSection').style.display = 'none';
+            $('infoSection').style.display = 'block';
+            setStep(2);
+            showError('Error analyzing call: ' + error.message);
+        } finally {
+            $('analyzeBtn').disabled = false;
+        }
+    }
+
+    $('analyzeBtn').addEventListener('click', analyzeCall);
+
+    /* ------------- client-side scoring: QA form arithmetic (authoritative) -------------
+       Works with both the upgraded analyze.js response and the older flat response. */
+    function normalizeResult(raw) {
+        const rawMetrics = Array.isArray(raw.metrics) ? raw.metrics : [];
+        const byId = {};
+        rawMetrics.forEach((m, i) => {
+            const id = m && m.id != null ? Number(m.id) : i + 1;
+            if (id >= 1 && id <= 18 && byId[id] === undefined) byId[id] = m;
+        });
+
+        const rows = [];
+        const secEarned = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const autoFailItems = [];
+
+        for (let id = 1; id <= 18; id++) {
+            const rubric = RUBRIC[id];
+            const m = byId[id] || {};
+            const statusRaw = String(m.status || '').toLowerCase().trim();
+            let status, earned;
+
+            if (id >= 16) {
+                const fail = ['auto-fail', 'auto_fail', 'autofail', 'fail', 'triggered', 'yes'].includes(statusRaw);
+                status = fail ? 'auto-fail' : 'not-observed';
+                earned = 0;
+                if (fail) autoFailItems.push(id);
+            } else if (id <= 8) {
+                if (['pass', 'yes', 'full', 'full points'].includes(statusRaw)) {
+                    status = 'pass'; earned = rubric.pts;
+                } else if (statusRaw) {
+                    status = (statusRaw === 'na' || statusRaw === 'n/a') ? 'na' : 'fail';
+                    earned = 0;
+                } else {
+                    const n = Number(m.score_earned);
+                    earned = isFinite(n) ? Math.min(rubric.pts, Math.max(0, Math.round(n))) : 0;
+                    status = earned >= rubric.pts ? 'pass' : earned > 0 ? 'partial' : 'fail';
+                }
+            } else if (id === 9) {
+                if (['pass', 'yes'].includes(statusRaw)) { status = 'pass'; earned = rubric.pts; }
+                else if (['na', 'n/a'].includes(statusRaw)) { status = 'na'; earned = 0; }
+                else { status = 'fail'; earned = 0; }
+            } else {
+                if (['pass', 'yes'].includes(statusRaw)) { status = 'pass'; earned = rubric.pts; }
+                else if (['partial', 'partially'].includes(statusRaw)) { status = 'partial'; earned = 3; }
+                else { status = 'fail'; earned = 0; }
+            }
+
+            rows.push({
+                id,
+                sec: rubric.sec,
+                title: rubric.title,
+                criteria: rubric.criteria,
+                possible: rubric.pts,
+                zero: !!rubric.zero,
+                status,
+                earned,
+                observation: typeof m.observation === 'string' ? m.observation.trim() : '',
+                recommendation: typeof m.recommendation === 'string' ? m.recommendation.trim() : ''
+            });
+
+            if (rubric.sec <= 4) secEarned[rubric.sec] += earned;
+        }
+
+        const total = rows.filter((r) => r.id <= 15).reduce((s, r) => s + r.earned, 0);
+        const autoFail = autoFailItems.length > 0;
+        const grade = autoFail ? 0 : total;
+
+        const strArr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
+
+        return {
+            grade,
+            total,
+            passed: !autoFail && grade >= PASSING_THRESHOLD,
+            autoFail,
+            autoFailItems,
+            rows,
+            sections: SECTIONS.map((s) => ({
+                ...s,
+                earned: s.zero ? 0 : secEarned[s.id]
+            })),
+            reasonForCall: typeof raw.reason_for_call === 'string' ? raw.reason_for_call.trim() : '',
+            strengths: strArr(raw.strengths),
+            opportunities: strArr(raw.opportunities),
+            concerns: strArr(raw.concerns),
+            recommendedActions: strArr(raw.recommended_actions),
+            coachingSuggestions: Array.isArray(raw.coaching_suggestions)
+                ? raw.coaching_suggestions
+                    .filter((s) => s && typeof s === 'object')
+                    .map((s) => ({
+                        area: String(s.area || '').trim(),
+                        suggestion: String(s.suggestion || '').trim(),
+                        example: String(s.example || '').trim()
+                    }))
+                    .filter((s) => s.suggestion)
+                : [],
+            coachingNotes: typeof raw.coaching_notes === 'string' ? raw.coaching_notes.trim() : ''
+        };
+    }
+
+    /* ---------------- rendering ---------------- */
+    function renderResults() {
+        const r = analysisResults;
+        $('progressSection').style.display = 'none';
+        $('resultsSection').style.display = 'block';
+
+        // Grade banner
+        const banner = $('gradeBanner');
+        banner.classList.remove('pass', 'fail');
+        banner.classList.add(r.passed ? 'pass' : 'fail');
+        $('gradeValue').textContent = r.grade + '%';
+        $('ptsLabel').textContent = r.total + ' / 100 pts scored';
+        const fill = $('progFill');
+        fill.classList.remove('pass', 'fail');
+        fill.classList.add(r.passed ? 'pass' : 'fail');
+        fill.style.width = r.grade + '%';
+
+        let statusText;
+        if (r.autoFail) statusText = '⚠ Auto Fail — PIP enrollment required';
+        else if (r.passed) statusText = '✓ Passing — meets the 85% standard';
+        else if (r.grade >= 70) statusText = 'Below passing — coaching required';
+        else statusText = 'Needs improvement — coaching required';
+        $('gradeStatus').textContent = statusText;
+
+        $('autofailBanner').classList.toggle('show', r.autoFail);
+
+        // Summary strip
+        const summary = $('summaryStrip');
+        const meta = [
+            ['Reason for Call', r.reasonForCall || '—'],
+            ['Agent', $('agentName').value.trim() || '—'],
+            ['Call Date', $('callDate').value || '—'],
+            ['Customer', $('customerName').value.trim() || '—'],
+            ['Dealership', $('dealership').value.trim() || '—'],
+            ['Disposition', $('disposition').value.trim() || '—']
+        ];
+        summary.innerHTML = meta.map(([k, v]) =>
+            '<div class="summary-item"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div>'
+        ).join('');
+
+        // Sections + metric rows
+        const container = $('sectionsContainer');
+        container.innerHTML = r.sections.map((sec) => {
+            const secRows = r.rows.filter((row) => row.sec === sec.id);
+            const rowsHTML = secRows.map((row) => {
+                const cls = row.zero
+                    ? (row.status === 'auto-fail' ? 'failed' : '')
+                    : (row.status === 'pass' ? 'passed' : (row.status === 'fail' ? 'failed' : ''));
+                const ptsText = row.zero
+                    ? '—'
+                    : '<span class="pts-chip">' + row.earned + '<span class="den"> / ' + row.possible + '</span></span>';
+                const statusHTML = '<span class="status-chip ' + esc(row.status) + '">' +
+                    esc(STATUS_LABELS[row.status] || row.status) + '</span>';
+                const obsHTML = row.observation
+                    ? '<div class="row-obs">' + esc(row.observation) + '</div>' : '';
+                const recHTML = row.recommendation
+                    ? '<div class="row-rec"><b>Coach:</b> ' + esc(row.recommendation) + '</div>' : '';
+                return '<div class="qa-row ' + cls + '">' +
+                    '<div class="row-num">' + row.id + '</div>' +
+                    '<div>' +
+                        '<div class="row-title">' + esc(row.title) +
+                            (row.criteria ? ' <span class="row-criteria">— ' + esc(row.criteria) + '</span>' : '') +
+                        '</div>' +
+                        obsHTML + recHTML +
+                    '</div>' +
+                    '<div class="row-right">' + ptsText + statusHTML + '</div>' +
+                '</div>';
+            }).join('');
+
+            const ptsLabel = sec.zero
+                ? (r.autoFail ? 'AUTO FAIL' : 'Not triggered')
+                : sec.earned + ' / ' + sec.possible + ' pts';
+
+            return '<div class="qa-section">' +
+                '<div class="qa-section-header' + (sec.zero ? ' zero' : '') + '">' +
+                    '<span>' + esc(sec.name) + '</span>' +
+                    '<span class="sec-pts">' + esc(ptsLabel) + '</span>' +
+                '</div>' +
+                '<div class="qa-rows">' + rowsHTML + '</div>' +
+            '</div>';
+        }).join('');
+
+        // Feedback lists
+        const listHTML = (items, empty) =>
+            items.length
+                ? items.map((x) => '<li>' + esc(x) + '</li>').join('')
+                : '<li class="empty">' + empty + '</li>';
+        $('strengthsList').innerHTML = listHTML(r.strengths, 'No clear strengths captured.');
+        $('oppsList').innerHTML = listHTML(r.opportunities, 'No development areas captured.');
+
+        const concernsBox = $('concernsBox');
+        if (r.concerns.length) {
+            $('concernsList').innerHTML = r.concerns.map((x) => '<li>' + esc(x) + '</li>').join('');
+            concernsBox.style.display = 'block';
+        } else {
+            concernsBox.style.display = 'none';
+        }
+
+        // Coaching suggestions (specific rewrites)
+        const sug = $('suggestionsContainer');
+        sug.innerHTML = r.coachingSuggestions.length
+            ? r.coachingSuggestions.map((s) =>
+                '<div class="suggestion-item">' +
+                    (s.area ? '<div class="suggestion-area">' + esc(s.area) + '</div>' : '') +
+                    '<div class="suggestion-text">' + esc(s.suggestion) + '</div>' +
+                    (s.example ? '<div class="suggestion-example">' + esc(s.example) + '</div>' : '') +
+                '</div>'
+            ).join('')
+            : '<div class="row-criteria">No additional suggestions returned.</div>';
+
+        // Recommended actions
+        const act = $('actionsContainer');
+        act.innerHTML = r.recommendedActions.length
+            ? '<div class="card-label" style="margin-bottom:10px;">Recommended Action Items</div>' +
+              r.recommendedActions.map((a, i) =>
+                '<div class="action-item"><div class="action-num">' + (i + 1) + '</div>' +
+                '<div class="action-text">' + esc(a) + '</div></div>'
+            ).join('')
+            : '';
+
+        // Coaching notes + transcript
+        $('coachingNotes').value = r.coachingNotes || '—';
+        $('transcriptBox').textContent = currentTranscript || '—';
+
+        setStep(3);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ---------------- actions ---------------- */
+    $('resetBtn').addEventListener('click', () => {
+        audioFile = null;
+        analysisResults = null;
+        currentTranscript = '';
+        audioInput.value = '';
+        $('manualTranscript').value = '';
+        $('fallbackBox').classList.remove('show');
+        $('fileChip').classList.remove('show');
+        dropzone.style.display = 'block';
+        $('resultsSection').style.display = 'none';
+        $('progressSection').style.display = 'none';
+        $('infoSection').style.display = 'none';
+        $('uploadSection').style.display = 'block';
+        ['agentName', 'customerName', 'customerPhone', 'dealership', 'disposition'].forEach((id) => { $(id).value = ''; });
+        clearMessages();
+        setStep(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    $('pdfBtn').addEventListener('click', () => {
+        if (!analysisResults) return;
+        const el = $('reportArea');
+        const opt = {
+            margin: 8,
+            filename: 'call-evaluation-' + ($('agentName').value.trim().replace(/\s+/g, '-').toLowerCase() || 'report') +
+                '-' + new Date().toISOString().slice(0, 10) + '.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+        html2pdf().set(opt).from(el).save();
+    });
+
+    // Enter key in details card triggers analysis
+    $('infoSection').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+            e.preventDefault();
+            analyzeCall();
+        }
+    });
+</script>
+</body>
+</html>

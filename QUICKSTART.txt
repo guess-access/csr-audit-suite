@@ -1,0 +1,219 @@
+================================================================================
+CSR FUNDAMENTALS MODULE 05 - AUDIT SUITE
+Quick Start Guide for Netlify Deployment
+================================================================================
+
+WHAT YOU HAVE:
+✓ Complete call evaluation system with 3 integrated tools
+✓ Matches DealerFocus brand design
+✓ Ready to deploy to Netlify in 2 minutes
+✓ All tools are standalone HTML (no database needed)
+
+================================================================================
+STEP-BY-STEP DEPLOYMENT (EASIEST METHOD)
+================================================================================
+
+1. EXTRACT THE ZIP
+   - Unzip "csr-audit-suite.zip"
+   - You should see these files:
+     • index.html
+     • audio-analyzer.html
+     • audit-form.html
+     • coaching-template.html
+     • netlify.toml
+     • README.md
+     • DEPLOYMENT_GUIDE.md
+     • FUNCTIONS_SETUP.md
+     • netlify/functions/ (transcribe.js, analyze.js)
+
+2. GO TO NETLIFY
+   - Visit: https://app.netlify.com/drop
+   - (No account needed yet)
+
+3. DRAG & DROP
+   - Drag the extracted folder (or individual files) onto the Netlify page
+   - Wait 10-30 seconds for processing
+
+   ⚠ IMPORTANT — AUDIO ANALYZER NEEDS A GIT OR CLI DEPLOY:
+   Drag-and-drop publishes the HTML only; it does NOT bundle the
+   netlify/functions folder, so the Audio Analyzer will not work on a
+   drop deploy. To enable it, deploy from your GitHub repo (or with the
+   Netlify CLI) and add the two environment variables from
+   FUNCTIONS_SETUP.md (ANTHROPIC_API_KEY, DEEPGRAM_API_KEY).
+   The Audit Form and Coaching Template work fine either way.
+
+4. LIVE!
+   - Netlify shows you a live URL
+   - Click it - your site is live!
+   - Share the URL with your team
+
+EXAMPLE:
+Your site might be at: https://admiring-bohr-12345.netlify.app/
+
+================================================================================
+FILES INCLUDED
+================================================================================
+
+index.html (Dashboard)
+├── Navigation to all tools
+├── Quick start guide
+├── Workflow information
+├── Links to all tools
+└── Professional DealerFocus styling
+
+audio-analyzer.html (RECOMMENDED)
+├── Upload MP3 call recordings
+├── AI auto-transcribes calls
+├── Automatic scoring (18 metrics)
+├── Generates coaching feedback
+└── PDF export
+
+audit-form.html (Manual Option)
+├── Manual call quality review
+├── Click-to-score interface
+├── Real-time scoring
+├── Detailed note-taking
+└── PDF export
+
+coaching-template.html (Coaching Session)
+├── Structured feedback capture
+├── Strengths & opportunities tracking
+├── 4-category performance ratings
+├── SMART action plan builder
+└── Signature documentation
+
+netlify.toml (Configuration)
+└── Automatic Netlify setup
+
+netlify/functions/ (Required by Audio Analyzer)
+├── transcribe.js — MP3 → transcript (Deepgram)
+└── analyze.js — transcript → QA form score + coaching (Claude)
+
+README.md (Full Documentation)
+└── Detailed tool guide
+
+DEPLOYMENT_GUIDE.md (Setup Instructions)
+└── In-depth deployment options
+
+================================================================================
+WHAT TO DO AFTER DEPLOY
+================================================================================
+
+1. TEST IT
+   - Go to the live URL
+   - Click through each tool
+   - Make sure everything works
+
+2. SHARE WITH TEAM
+   - Send the live URL
+   - No login needed - anyone can access
+   - Works on mobile & desktop
+
+3. START USING
+   - Audio Analyzer: Upload call MP3 → Get instant score
+   - Audit Form: Manually score a call
+   - Coaching Template: Prepare for coaching session
+
+4. (OPTIONAL) CUSTOMIZE
+   - Add your logo (replace emoji in index.html)
+   - Change colors (edit CSS variables)
+   - Add custom domain (in Netlify settings)
+   - Add authentication (if needed - see DEPLOYMENT_GUIDE.md)
+
+================================================================================
+TOOLS AT A GLANCE
+================================================================================
+
+AUDIO ANALYZER (Best for Most Cases)
+Time: 2-5 minutes per call
+Input: MP3 file
+Output: Score, strengths, opportunities, coaching tips, PDF
+Best for: Daily call reviews, consistent scoring, time savings
+
+AUDIT FORM (Best for Manual Review)
+Time: 5-10 minutes per call
+Input: Manual scoring by listening
+Output: Score, notes, PDF
+Best for: Training, calibration, detailed review
+
+COACHING TEMPLATE (For Follow-up)
+Time: 30-45 minutes
+Input: Results from analyzer or form
+Output: Structured coaching plan, action items, PDF
+Best for: One-on-one development, progress tracking
+
+================================================================================
+COMMON QUESTIONS
+================================================================================
+
+Q: Do I need a Netlify account?
+A: You'll need one to keep the site live. Free at netlify.com.
+
+Q: Can audio files be seen or stored?
+A: No. Audio is processed through secure API and not saved.
+
+Q: How many people can use it at once?
+A: Unlimited. It's a web app - everyone accesses simultaneously.
+
+Q: Can I add a custom domain?
+A: Yes! In Netlify Site Settings → Domain Management
+
+Q: How much does it cost?
+A: Netlify free tier is enough. $20+/month for advanced features.
+
+Q: Can it work on mobile?
+A: Yes! Fully responsive on phones, tablets, desktops.
+
+Q: What if audio upload doesn't work?
+A: Ensure file is MP3 (not WAV), under 3MB, try Chrome browser.
+
+Q: Can agents log in separately?
+A: Default is open access. You can add authentication if needed.
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+IMMEDIATE (Now)
+□ Extract csr-audit-suite.zip
+□ Go to netlify.com/drop
+□ Drag folder and deploy
+□ Test the live site
+
+SHORT TERM (This Week)
+□ Share URL with team
+□ Have managers try it out
+□ Export a test PDF
+□ Provide feedback
+
+MEDIUM TERM (This Month)
+□ Start reviewing calls
+□ Conduct coaching sessions
+□ Gather user feedback
+□ Document any issues
+
+LONG TERM (This Quarter)
+□ Track call scores over time
+□ Identify training trends
+□ Refine coaching approach
+□ Measure improvement
+
+================================================================================
+SUPPORT
+================================================================================
+
+For Deployment Issues:
+→ DEPLOYMENT_GUIDE.md (detailed troubleshooting)
+→ Netlify Support: support.netlify.com
+
+For Tool Questions:
+→ README.md (complete documentation)
+→ Each tool has help text built-in
+
+================================================================================
+
+Ready? Unzip the folder and drag to netlify.com/drop in 60 seconds!
+
+Version: 1.0 | Created: September 2026 | Status: Production Ready
+
+================================================================================

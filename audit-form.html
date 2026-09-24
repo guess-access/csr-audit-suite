@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DealerFocus Call Quality Audit Form</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .info-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        textarea {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="date"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .section {
+            margin-bottom: 35px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-points {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .question {
+            background: #f8f9fa;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #ddd;
+        }
+
+        .question.scoring {
+            border-left-color: #667eea;
+        }
+
+        .question-text {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .question-points {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .btn.auto-fail {
+            border-color: #dc3545;
+        }
+
+        .btn.auto-fail.active {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .textarea-container {
+            margin-top: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            resize: vertical;
+            padding: 12px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #eee;
+            justify-content: flex-end;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            padding: 12px 24px;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            border-color: #5568d3;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border-color: #667eea;
+            padding: 12px 24px;
+            font-size: 14px;
+        }
+
+        .btn-secondary:hover {
+            background: #f0f4ff;
+        }
+
+        .score-display {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .score-display h3 {
+            font-size: 14px;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+
+        .score-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .score-value span {
+            font-size: 24px;
+            color: #999;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+
+            .actions {
+                display: none;
+            }
+
+            .question {
+                break-inside: avoid;
+            }
+        }
+
+        .print-hint {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CSR Fundamentals</h1>
+            <p>DealerFocus Call Quality Audit Form</p>
+        </div>
+
+        <div class="content">
+            <form id="auditForm">
+                <!-- Call Information -->
+                <div class="section">
+                    <h2 class="section-title">Call Information</h2>
+                    <div class="info-grid">
+                        <div class="form-group">
+                            <label for="agentName">Agent Name *</label>
+                            <input type="text" id="agentName" name="agentName" placeholder="Enter full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="callDate">Call Date *</label>
+                            <input type="date" id="callDate" name="callDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customerName">Customer Name</label>
+                            <input type="text" id="customerName" name="customerName" placeholder="Customer full name">
+                        </div>
+                        <div class="form-group">
+                            <label for="customerPhone">Customer Phone #</label>
+                            <input type="text" id="customerPhone" name="customerPhone" placeholder="(555) 000-0000">
+                        </div>
+                        <div class="form-group">
+                            <label for="dealershipName">Dealership Name</label>
+                            <input type="text" id="dealershipName" name="dealershipName" placeholder="Dealership">
+                        </div>
+                        <div class="form-group">
+                            <label for="callDisposition">Call Disposition</label>
+                            <input type="text" id="callDisposition" name="callDisposition" placeholder="e.g. Warm Transfer – Service">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 1: Call Flow Procedure -->
+                <div class="section">
+                    <div class="section-title">
+                        1 — Call Flow Procedure
+                        <span class="section-points">20 pts</span>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">10 pts</div>
+                        <div class="question-text">1. Agent used proper branding — announced the dealership name?</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q1">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q1">No — 0 Points</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">10 pts</div>
+                        <div class="question-text">2. Agent introduced themselves by name?</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q2">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q2">No — 0 Points</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Body of the Call -->
+                <div class="section">
+                    <div class="section-title">
+                        2 — Body of the Call
+                        <span class="section-points">24 pts</span>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">8 pts</div>
+                        <div class="question-text">3. Agent asked the customer the reason for the transfer?</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q3">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q3">No — 0 Points</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">8 pts</div>
+                        <div class="question-text">4. Agent asked for the customer's name to address them properly?</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q4">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q4">No — 0 Points</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">8 pts</div>
+                        <div class="question-text">5. Agent introduced the customer to Service/Parts before transferring?</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q5">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q5">No — 0 Points</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: System Process Accuracy -->
+                <div class="section">
+                    <div class="section-title">
+                        3 — System Process Accuracy
+                        <span class="section-points">21 pts</span>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">8 pts</div>
+                        <div class="question-text">6. Warm transfer: agent used proper protocol? Hold 3 rings — wait for someone to answer before releasing</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q6">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q6">No — 0 Points</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">7. Input correct data in software? First and last name + phone number entered accurately</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q7">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q7">No — 0 Points</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">8 pts</div>
+                        <div class="question-text">8. Correct call disposition selected in the system?</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q8">Yes — Full Points</button>
+                            <button type="button" class="btn" data-value="no" data-field="q8">No — 0 Points</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Call Management Skills -->
+                <div class="section">
+                    <div class="section-title">
+                        4 — Call Management Skills
+                        <span class="section-points">35 pts</span>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">9. Hold Procedure — Set expectation before placing on hold; explained reason for silence</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q9">Yes</button>
+                            <button type="button" class="btn" data-value="no" data-field="q9">No</button>
+                            <button type="button" class="btn" data-value="na" data-field="q9">N/A</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">10. Communication & Delivery — Enunciates clearly; avoids jargon; speaks with fluidity</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q10">Yes</button>
+                            <button type="button" class="btn" data-value="partial" data-field="q10">Partial</button>
+                            <button type="button" class="btn" data-value="no" data-field="q10">No</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">11. Empathy — Acknowledged customer's emotion appropriately</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q11">Yes</button>
+                            <button type="button" class="btn" data-value="partial" data-field="q11">Partial</button>
+                            <button type="button" class="btn" data-value="no" data-field="q11">No</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">12. Active Listening — Avoided repetition; showed attention to detail</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q12">Yes</button>
+                            <button type="button" class="btn" data-value="partial" data-field="q12">Partial</button>
+                            <button type="button" class="btn" data-value="no" data-field="q12">No</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">13. Tone of Voice — Sounded accommodating and willing to help</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q13">Yes</button>
+                            <button type="button" class="btn" data-value="partial" data-field="q13">Partial</button>
+                            <button type="button" class="btn" data-value="no" data-field="q13">No</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">14. Efficiency — Was concise in delivering resolution to customer's concern</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q14">Yes</button>
+                            <button type="button" class="btn" data-value="partial" data-field="q14">Partial</button>
+                            <button type="button" class="btn" data-value="no" data-field="q14">No</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-points">5 pts</div>
+                        <div class="question-text">15. Confidence — Sounded certain and accurate; assured the customer</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="yes" data-field="q15">Yes</button>
+                            <button type="button" class="btn" data-value="partial" data-field="q15">Partial</button>
+                            <button type="button" class="btn" data-value="no" data-field="q15">No</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: Zero Tolerance Behavior -->
+                <div class="section">
+                    <div class="section-title">
+                        5 — Zero Tolerance Behavior
+                        <span class="section-points">Auto Fail / PIP</span>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-text">16. Rudeness — Used profanity or condescending statement; condescending tone; consistently interrupted customer</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="not-observed" data-field="q16">Not observed</button>
+                            <button type="button" class="btn auto-fail" data-value="auto-fail" data-field="q16">AUTO FAIL</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-text">17. Service Fail — Booked when policy says Do Not Book (or vice versa); incorrect appt date/time; failure to confirm transportation option; or no appointment scheduled</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="not-observed" data-field="q17">Not observed</button>
+                            <button type="button" class="btn auto-fail" data-value="auto-fail" data-field="q17">AUTO FAIL</button>
+                        </div>
+                    </div>
+
+                    <div class="question scoring">
+                        <div class="question-text">18. Call Avoidance — Disconnecting calls intentionally</div>
+                        <div class="button-group">
+                            <button type="button" class="btn" data-value="not-observed" data-field="q18">Not observed</button>
+                            <button type="button" class="btn auto-fail" data-value="auto-fail" data-field="q18">AUTO FAIL</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reason for Call -->
+                <div class="section">
+                    <h2 class="section-title">Reason for Call</h2>
+                    <div class="form-group">
+                        <textarea id="reasonForCall" name="reasonForCall" placeholder="Enter the reason for the call..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Coaching Notes -->
+                <div class="section">
+                    <h2 class="section-title">Agent Work-On (Coaching Notes)</h2>
+                    <div class="form-group">
+                        <textarea id="coachingNotes" name="coachingNotes" placeholder="Enter coaching notes / areas for improvement..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Score Display -->
+                <div class="score-display">
+                    <h3>Overall Score</h3>
+                    <div class="score-value"><span id="currentScore">0</span> / 100</div>
+                </div>
+
+                <!-- Actions -->
+                <div class="actions">
+                    <button type="reset" class="btn btn-secondary">Reset Form</button>
+                    <button type="button" class="btn btn-primary" onclick="generatePDF()">Generate PDF</button>
+                </div>
+
+                <div class="print-hint">💡 Click "Generate PDF" to save your evaluation as a PDF file</div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('auditForm');
+        const currentScoreEl = document.getElementById('currentScore');
+
+        // Scoring map
+        const scoreMap = {
+            q1: { yes: 10, no: 0 },
+            q2: { yes: 10, no: 0 },
+            q3: { yes: 8, no: 0 },
+            q4: { yes: 8, no: 0 },
+            q5: { yes: 8, no: 0 },
+            q6: { yes: 8, no: 0 },
+            q7: { yes: 5, no: 0 },
+            q8: { yes: 8, no: 0 },
+            q9: { yes: 5, partial: 3, no: 0, na: 0 },
+            q10: { yes: 5, partial: 3, no: 0 },
+            q11: { yes: 5, partial: 3, no: 0 },
+            q12: { yes: 5, partial: 3, no: 0 },
+            q13: { yes: 5, partial: 3, no: 0 },
+            q14: { yes: 5, partial: 3, no: 0 },
+            q15: { yes: 5, partial: 3, no: 0 },
+            q16: { 'not-observed': 0, 'auto-fail': 'FAIL' },
+            q17: { 'not-observed': 0, 'auto-fail': 'FAIL' },
+            q18: { 'not-observed': 0, 'auto-fail': 'FAIL' }
+        };
+
+        // Store selected answers
+        const answers = {};
+
+        // Button click handlers
+        document.querySelectorAll('.btn[data-value]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const field = this.getAttribute('data-field');
+                const value = this.getAttribute('data-value');
+
+                // Remove active class from siblings
+                document.querySelectorAll(`[data-field="${field}"]`).forEach(b => b.classList.remove('active'));
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+
+                // Store answer
+                answers[field] = value;
+
+                // Update score
+                updateScore();
+            });
+        });
+
+        function updateScore() {
+            let totalScore = 0;
+            let hasAutoFail = false;
+
+            for (let field in answers) {
+                const value = answers[field];
+                if (scoreMap[field]) {
+                    const points = scoreMap[field][value];
+                    if (points === 'FAIL') {
+                        hasAutoFail = true;
+                    } else if (typeof points === 'number') {
+                        totalScore += points;
+                    }
+                }
+            }
+
+            if (hasAutoFail) {
+                currentScoreEl.textContent = 'FAIL';
+                currentScoreEl.parentElement.querySelector('.score-value').style.color = '#dc3545';
+            } else {
+                currentScoreEl.textContent = totalScore;
+                currentScoreEl.parentElement.querySelector('.score-value').style.color = '#667eea';
+            }
+        }
+
+        function generatePDF() {
+            const element = document.querySelector('.container');
+            const opt = {
+                margin: 10,
+                filename: `call-quality-audit-${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Set today's date as default
+        document.getElementById('callDate').valueAsDate = new Date();
+    </script>
+</body>
+</html>

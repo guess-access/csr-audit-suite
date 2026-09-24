@@ -1,0 +1,7 @@
+{
+  "name": "csr-audit-suite",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
