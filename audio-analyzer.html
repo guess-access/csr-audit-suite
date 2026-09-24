@@ -1057,6 +1057,8 @@
         $('progressSection').style.display = 'block';
         setStep(3);
 
+        let stage = manualText ? 'analyze' : 'transcribe';
+
         try {
             let transcript = manualText;
 
@@ -1072,6 +1074,7 @@
                 if (!transcript) throw new Error('No speech was detected in this file.');
             }
 
+            stage = 'analyze';
             setProgress('Scoring against the QA form…',
                 'Evaluating all 18 metrics across 5 sections and writing coaching feedback', 75);
             const result = await postJSON('/api/analyze', {
@@ -1091,7 +1094,21 @@
             $('progressSection').style.display = 'none';
             $('infoSection').style.display = 'block';
             setStep(2);
-            showError('Error analyzing call: ' + error.message);
+            const stepLabel = stage === 'transcribe'
+                ? 'Step 1 (transcription / Deepgram) failed: '
+                : 'Step 2 (scoring / Claude) failed: ';
+            let msg = error.message || String(error);
+            let hint = '';
+            if (/credential/i.test(msg)) {
+                hint = ' The transcription service rejected your API key — check that DEEPGRAM_API_KEY in Netlify (Site configuration → Environment variables) is the correct, active Deepgram key, then redeploy.';
+            } else if (/api.?key/i.test(msg)) {
+                hint = ' Check that ANTHROPIC_API_KEY in Netlify (Site configuration → Environment variables) is correct, then redeploy.';
+            } else if (/not set/i.test(msg)) {
+                hint = ' Add the missing key in Netlify (Site configuration → Environment variables) and redeploy — env var changes only apply to new deploys.';
+            } else if (/Network error|HTTP 404|HTTP 502|HTML/i.test(msg)) {
+                hint = ' If this site was deployed by drag-and-drop, redeploy from the GitHub repo so the Netlify functions are bundled (see FUNCTIONS_SETUP.md).';
+            }
+            showError('Error analyzing call: ' + stepLabel + msg + hint);
         } finally {
             $('analyzeBtn').disabled = false;
         }
