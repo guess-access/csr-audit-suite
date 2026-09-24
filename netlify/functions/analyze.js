@@ -1,8 +1,14 @@
 // netlify/functions/analyze.js
 //
 // Takes a call transcript (plain text, produced by transcribe.js) and scores
-// it against the Dealerfocus Call Quality QA form using Claude. The Anthropic
-// API key lives here, server-side, and is never sent to the browser.
+// it against the Dealerfocus Call Quality QA form, then writes coaching
+// feedback. API keys live here, server-side, and are never sent to the
+// browser.
+//
+// Provider selection — first key found wins, so you only need ONE scoring key:
+//   GEMINI_API_KEY   (Google Gemini free tier — recommended, no credit card)
+//   GROQ_API_KEY     (Groq free tier — no credit card)
+//   ANTHROPIC_API_KEY (Claude — paid, optional)
 //
 // QA form rules encoded below (matches the interactive form exactly):
 //   - 18 metrics across 5 sections, 100 pts total, 85% passing threshold
@@ -11,12 +17,9 @@
 //   - Metrics 10-15: full (5) / Partial (3) / No (0)
 //   - Metrics 16-18 (Zero Tolerance): "auto-fail" triggers grade 0 + PIP review
 //
-// Claude returns observations, but the numbers are re-derived server-side by
-// normalize() so the score always follows the form's arithmetic — the model
-// can never award points the form wouldn't.
-//
-// Required environment variable (set in Netlify: Site settings > Environment
-// variables): ANTHROPIC_API_KEY
+// The model returns observations, but the numbers are re-derived server-side
+// by normalize() so the score always follows the form's arithmetic — the
+// model can never award points the form wouldn't.
 
 // Points possible per metric (16-18 are zero-tolerance: no point value).
 const POSSIBLE = {
@@ -66,7 +69,6 @@ function normalizeMetric(id, raw) {
       status = statusRaw === 'na' || statusRaw === 'n/a' ? 'na' : 'fail';
       earned = 0;
     } else {
-      // No usable status — fall back to the reported number, clamped.
       const n = Number(raw.score_earned);
       earned = Number.isFinite(n) ? clamp(Math.round(n), 0, possible) : 0;
       status = earned >= possible ? 'pass' : earned > 0 ? 'partial' : 'fail';
@@ -79,7 +81,7 @@ function normalizeMetric(id, raw) {
       status = 'na';
       earned = 0;
     } else {
-      status = statusRaw ? 'fail' : 'fail';
+      status = 'fail';
       earned = 0;
     }
   } else {
@@ -121,7 +123,6 @@ function normalize(analysis) {
     metrics.push(normalizeMetric(id, byId[id]));
   }
 
-  // Section subtotals straight from the normalized metrics.
   const sections = SECTIONS.map((sec) => {
     const earned = sec.ids.reduce((sum, id) => sum + metrics[id - 1].score_earned, 0);
     const possible = sec.ids.reduce((sum, id) => sum + POSSIBLE[id], 0);
@@ -177,44 +178,109 @@ function normalize(analysis) {
   };
 }
 
-exports.handler = async (event) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-  };
+/* ---------------- providers ---------------- */
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers };
-  }
+function pickProvider(env) {
+  if (env.GEMINI_API_KEY) return 'gemini';
+  if (env.GROQ_API_KEY) return 'groq';
+  if (env.ANTHROPIC_API_KEY) return 'anthropic';
+  return null;
+}
 
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
+const NO_KEY_MESSAGE =
+  'No scoring AI key is configured. FREE options (no credit card): ' +
+  'GEMINI_API_KEY — create at https://aistudio.google.com/apikey, or ' +
+  'GROQ_API_KEY — create at https://console.groq.com/keys. ' +
+  '(Paid option: ANTHROPIC_API_KEY.) Add one in Netlify: Site settings > Environment variables, then redeploy.';
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return {
-      statusCode: 500,
-      headers,
+async function callGemini(prompt, env) {
+  const model = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': env.GEMINI_API_KEY,
+      },
       body: JSON.stringify({
-        error: 'ANTHROPIC_API_KEY is not set. Add it in Netlify: Site settings > Environment variables, then redeploy.',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+        },
       }),
-    };
+    }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      `Gemini: ${data?.error?.message || `HTTP ${res.status} ${data?.error?.status || ''}`}`
+    );
   }
+  const text = (data?.candidates?.[0]?.content?.parts || [])
+    .map((p) => p.text || '')
+    .join('');
+  if (!text.trim()) throw new Error('Gemini returned an empty response');
+  return text;
+}
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || '{}');
-  } catch (err) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON body' }) };
+async function callGroq(prompt, env) {
+  const model = env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a dealership QA auditor. You reply with valid JSON only — no markdown, no commentary.',
+        },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Groq: ${data?.error?.message || `HTTP ${res.status}`}`);
   }
+  const text = data?.choices?.[0]?.message?.content || '';
+  if (!text.trim()) throw new Error('Groq returned an empty response');
+  return text;
+}
 
-  const { transcript, agentName, callDate } = payload;
-  if (!transcript || !transcript.trim()) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing "transcript" in request body' }) };
+async function callAnthropic(prompt, env) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Claude: ${data?.error?.message || `HTTP ${res.status}`}`);
   }
+  const text = (data?.content || []).map((c) => c.text || '').join('');
+  if (!text.trim()) throw new Error('Claude returned an empty response');
+  return text;
+}
 
-  const prompt = `You are a QA auditor for a dealership customer service team. Score this call transcript against the Dealerfocus Call Quality QA form, then write specific coaching feedback for the agent.
+function buildPrompt(agentName, callDate, transcript) {
+  return `You are a QA auditor for a dealership customer service team. Score this call transcript against the Dealerfocus Call Quality QA form, then write specific coaching feedback for the agent.
 
 Agent: ${agentName || 'Unknown'}
 Call date: ${callDate || 'Unknown'}
@@ -248,7 +314,6 @@ SCORING RULES (apply exactly):
   17. Service Fail — booked when policy says Do Not Book (or vice versa), wrong appointment date/time, failed to confirm transportation option, or no appointment scheduled
   18. Call Avoidance — disconnecting intentionally
 - Judge ONLY what the transcript supports. System actions that cannot be heard (data entry, disposition selection, hold timing) score 0 unless the transcript clearly confirms them — say in the observation that it needs manual verification.
-- Base the evaluation on the transcript evidence; note it when the agent's identity vs the customer's is ambiguous.
 
 Respond ONLY with valid JSON in exactly this shape:
 {
@@ -267,47 +332,87 @@ Respond ONLY with valid JSON in exactly this shape:
 }
 
 Rules for the JSON: include all 18 metrics in order with id 1-18; score_earned must follow the rules above; every coaching_suggestions entry must have area, suggestion, and example; respond with JSON only, no markdown, no commentary.`;
+}
+
+function extractJson(text) {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch (err) {
+    // Tolerate fenced or slightly malformed output before giving up.
+    const cleaned = match[0].replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch (err2) {
+      return null;
+    }
+  }
+}
+
+/* ---------------- handler ---------------- */
+
+exports.handler = async (event) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  const env = process.env;
+  const provider = pickProvider(env);
+  if (!provider) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: NO_KEY_MESSAGE }) };
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(event.body || '{}');
+  } catch (err) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON body' }) };
+  }
+
+  const { transcript, agentName, callDate } = payload;
+  if (!transcript || !transcript.trim()) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing "transcript" in request body' }) };
+  }
+
+  const prompt = buildPrompt(agentName, callDate, transcript);
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 3000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const message = data?.error?.message || 'Claude API request failed';
-      return { statusCode: response.status, headers, body: JSON.stringify({ error: message }) };
+    let rawText;
+    if (provider === 'gemini') {
+      rawText = await callGemini(prompt, env);
+    } else if (provider === 'groq') {
+      rawText = await callGroq(prompt, env);
+    } else {
+      rawText = await callAnthropic(prompt, env);
     }
 
-    const textContent = data?.content?.map((c) => c.text || '').join('') || '';
-    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Claude did not return a parseable analysis' }) };
-    }
-
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch (err) {
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Claude returned invalid JSON' }) };
+    const parsed = extractJson(rawText);
+    if (!parsed) {
+      return {
+        statusCode: 502,
+        headers,
+        body: JSON.stringify({ error: `${provider} did not return a parseable analysis` }),
+      };
     }
 
     // Scores are always recomputed with the QA form's arithmetic.
     const analysis = normalize(parsed);
-    return { statusCode: 200, headers, body: JSON.stringify({ analysis }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ analysis, provider }) };
   } catch (err) {
-    return { statusCode: 502, headers, body: JSON.stringify({ error: `Analysis request failed: ${err.message}` }) };
+    return {
+      statusCode: 502,
+      headers,
+      body: JSON.stringify({ error: `Analysis request failed: ${err.message}` }),
+    };
   }
 };
