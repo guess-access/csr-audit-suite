@@ -1097,15 +1097,16 @@
             const stepLabel = stage === 'transcribe'
                 ? 'Step 1 (transcription / Deepgram) failed: '
                 : 'Step 2 (scoring / Claude) failed: ';
-            let msg = error.message || String(error);
+            const keyName = stage === 'transcribe' ? 'DEEPGRAM_API_KEY' : 'ANTHROPIC_API_KEY';
+            const msg = error.message || String(error);
             let hint = '';
-            if (/credential/i.test(msg)) {
-                hint = ' The transcription service rejected your API key — check that DEEPGRAM_API_KEY in Netlify (Site configuration → Environment variables) is the correct, active Deepgram key, then redeploy.';
-            } else if (/api.?key/i.test(msg)) {
-                hint = ' Check that ANTHROPIC_API_KEY in Netlify (Site configuration → Environment variables) is correct, then redeploy.';
-            } else if (/not set/i.test(msg)) {
-                hint = ' Add the missing key in Netlify (Site configuration → Environment variables) and redeploy — env var changes only apply to new deploys.';
-            } else if (/Network error|HTTP 404|HTTP 502|HTML/i.test(msg)) {
+            if (/not set/i.test(msg)) {
+                hint = ' Add ' + keyName + ' in Netlify (Site configuration → Environment variables), then trigger a redeploy — env changes only apply to new deploys.';
+            } else if (stage === 'transcribe' && /credential/i.test(msg)) {
+                hint = ' The transcription service rejected the key — create a fresh one at console.deepgram.com (Settings → API Keys), replace DEEPGRAM_API_KEY in Netlify, and redeploy.';
+            } else if (/api.?key|credential/i.test(msg)) {
+                hint = ' Check that ' + keyName + ' in Netlify (Site configuration → Environment variables) is correct, then redeploy.';
+            } else if (/Network error|HTTP 404|HTTP 502/i.test(msg)) {
                 hint = ' If this site was deployed by drag-and-drop, redeploy from the GitHub repo so the Netlify functions are bundled (see FUNCTIONS_SETUP.md).';
             }
             showError('Error analyzing call: ' + stepLabel + msg + hint);
