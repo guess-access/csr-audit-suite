@@ -39,7 +39,8 @@ STEP-BY-STEP DEPLOYMENT (EASIEST METHOD)
    netlify/functions folder, so the Audio Analyzer will not work on a
    drop deploy. To enable it, deploy from your GitHub repo (or with the
    Netlify CLI) and add the two environment variables from
-   FUNCTIONS_SETUP.md (ANTHROPIC_API_KEY, DEEPGRAM_API_KEY).
+   FUNCTIONS_SETUP.md (DEEPGRAM_API_KEY plus GEMINI_API_KEY or
+   GROQ_API_KEY - both free, no credit card needed).
    The Audit Form and Coaching Template work fine either way.
 
 4. LIVE!
@@ -87,7 +88,7 @@ netlify.toml (Configuration)
 
 netlify/functions/ (Required by Audio Analyzer)
 ├── transcribe.js — MP3 → transcript (Deepgram)
-└── analyze.js — transcript → QA form score + coaching (Claude)
+└── analyze.js — transcript → QA form score + coaching (Gemini/Groq/Claude)
 
 README.md (Full Documentation)
 └── Detailed tool guide

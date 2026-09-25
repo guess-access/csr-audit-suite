@@ -206,11 +206,15 @@ Edit the navbar in `index.html` to link to:
   the functions were not deployed. This happens on **drag-and-drop
   deploys**, which never build functions (see DEPLOYMENT_GUIDE Options 2/3).
   Redeploy from a Git repo or with the Netlify CLI.
-- Otherwise, most often this means `ANTHROPIC_API_KEY` and/or `DEEPGRAM_API_KEY` aren't
-  set in Netlify yet — see `FUNCTIONS_SETUP.md`
+- Otherwise, most often this means a key isn't set in Netlify yet —
+  `DEEPGRAM_API_KEY` for transcription, plus one free scoring key
+  (`GEMINI_API_KEY` or `GROQ_API_KEY`; `ANTHROPIC_API_KEY` also works) —
+  see `FUNCTIONS_SETUP.md`
 - Check internet connection
 - Try again in 30 seconds
-- Check Anthropic API status
+- Check your AI provider's API status (Gemini: status.cloud.google.com,
+  Groq: status.groq.com, Anthropic: status.anthropic.com) and Deepgram
+  status.deepgram.com
 - Ensure MP3 is valid audio file and under ~3MB (~3 minutes)
 - Try a shorter audio clip first
 

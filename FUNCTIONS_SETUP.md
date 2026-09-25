@@ -8,7 +8,7 @@ so a transcription step had to be added.
 
 ```
 Browser → /api/transcribe → Deepgram (speech-to-text)
-Browser → /api/analyze    → Claude (scores the transcript)
+Browser → /api/analyze    → Gemini / Groq / Claude (scores the transcript)
 ```
 
 The browser calls `/api/*` rather than `/.netlify/functions/*` directly
@@ -24,22 +24,39 @@ are never sent to the browser.
 
 ## 1. Get your API keys
 
-- **Anthropic (Claude):** console.anthropic.com → API Keys
-- **Deepgram (speech-to-text):** console.deepgram.com — free tier includes a
-  starting credit, no card required to try it. (Any speech-to-text provider
-  works here; Deepgram was picked because its REST API returns a transcript
-  in a single request, no polling needed. AssemblyAI is a solid alternative
-  if you'd rather use that.)
+You need **two** keys: one for transcription, one for scoring. Both can be
+free — no credit card required.
+
+- **Deepgram (speech-to-text):** console.deepgram.com → Settings → API Keys
+  — free starter credit, no card required to try it. (Any speech-to-text
+  provider works here; Deepgram was picked because its REST API returns a
+  transcript in a single request, no polling needed. AssemblyAI is a solid
+  alternative if you'd rather use that.)
+- **Scoring AI — pick ONE (free options first):**
+  1. **Google Gemini — free tier, recommended:** aistudio.google.com/apikey
+     → *Create API key*. The free tier's rate limits are far more than a
+     manager reviewing calls one at a time will ever hit.
+  2. **Groq — free tier:** console.groq.com → API Keys. Also generous and
+     very fast.
+  3. **Anthropic (Claude) — paid, optional:** console.anthropic.com →
+     API Keys. Only if you already have credits and prefer Claude.
+
+`analyze.js` picks whichever key it finds, in that order, so you only add
+one. (Optional overrides if a provider renames its default model:
+`GEMINI_MODEL`, `GROQ_MODEL`, `ANTHROPIC_MODEL`.)
 
 ## 2. Add the keys to Netlify
 
 In your Netlify site: **Site configuration → Environment variables → Add a
-variable**, and add both:
+variable**, and add:
 
 | Key | Value |
 |---|---|
-| `ANTHROPIC_API_KEY` | your Anthropic key |
 | `DEEPGRAM_API_KEY` | your Deepgram key |
+| `GEMINI_API_KEY` | your Gemini key **(or** `GROQ_API_KEY` / `ANTHROPIC_API_KEY` — one scoring key is enough **)** |
+
+Tip: the *Import from .env* box needs `KEY=VALUE` with an equals sign, one
+pair per line — spaces won't parse.
 
 Then trigger a redeploy (env var changes don't apply to already-built
 deploys).
@@ -67,6 +84,17 @@ netlify dev
 
 This runs the site *and* the functions locally at `http://localhost:8888`,
 using a `.env` file (or `netlify env:import`) for the two keys above.
+
+## Troubleshooting
+
+| Error shown by the analyzer | What it means | Fix |
+|---|---|---|
+| `Step 1 (transcription / Deepgram) failed: Invalid credentials.` | Deepgram rejected the key — it's mistyped, has a stray space/newline, was revoked, or belongs to another account | console.deepgram.com → **Settings → API Keys** → create a fresh key, replace `DEEPGRAM_API_KEY` in Netlify, redeploy |
+| `Step 2 (scoring) failed: No scoring AI key is configured...` | None of the scoring keys are set | Add `GEMINI_API_KEY` (free) or `GROQ_API_KEY` (free) in Netlify → Environment variables, redeploy |
+| `Step 2 (scoring) failed: ... Gemini: / Groq: / Claude: ... invalid api key` | That provider rejected the key | Regenerate the key at the provider's console, replace the matching variable in Netlify, redeploy |
+| `..._API_KEY is not set` | The env var is missing | Add it in Netlify → Site configuration → Environment variables, then redeploy (env changes only apply to new deploys) |
+| `Unexpected token '<'` or HTTP 404/502 on `/api/*` | Site was deployed by drag-and-drop, so the functions weren't bundled | Redeploy from the GitHub repo (Git route above) or with the Netlify CLI |
+| `Audio file is too large` | Clip exceeds 3 MB | Trim the recording or lower the MP3 bitrate |
 
 ## Current limits, and how to raise them later
 

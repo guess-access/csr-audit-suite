@@ -1096,16 +1096,20 @@
             setStep(2);
             const stepLabel = stage === 'transcribe'
                 ? 'Step 1 (transcription / Deepgram) failed: '
-                : 'Step 2 (scoring / Claude) failed: ';
-            const keyName = stage === 'transcribe' ? 'DEEPGRAM_API_KEY' : 'ANTHROPIC_API_KEY';
+                : 'Step 2 (scoring) failed: ';
+            const keyName = stage === 'transcribe'
+                ? 'DEEPGRAM_API_KEY'
+                : 'GEMINI_API_KEY / GROQ_API_KEY / ANTHROPIC_API_KEY';
             const msg = error.message || String(error);
             let hint = '';
-            if (/not set/i.test(msg)) {
-                hint = ' Add ' + keyName + ' in Netlify (Site configuration → Environment variables), then trigger a redeploy — env changes only apply to new deploys.';
+            if (/not set|no scoring ai key/i.test(msg)) {
+                hint = stage === 'transcribe'
+                    ? ' Add DEEPGRAM_API_KEY in Netlify (Site configuration → Environment variables), then trigger a redeploy — env changes only apply to new deploys.'
+                    : ' Free fix (no credit card): get a key at aistudio.google.com/apikey (Gemini) or console.groq.com/keys (Groq), add it as GEMINI_API_KEY or GROQ_API_KEY in Netlify (Site configuration → Environment variables), then redeploy.';
             } else if (stage === 'transcribe' && /credential/i.test(msg)) {
                 hint = ' The transcription service rejected the key — create a fresh one at console.deepgram.com (Settings → API Keys), replace DEEPGRAM_API_KEY in Netlify, and redeploy.';
             } else if (/api.?key|credential/i.test(msg)) {
-                hint = ' Check that ' + keyName + ' in Netlify (Site configuration → Environment variables) is correct, then redeploy.';
+                hint = ' Check your key in Netlify (Site configuration → Environment variables) — expected ' + keyName + ' — then redeploy.';
             } else if (/Network error|HTTP 404|HTTP 502/i.test(msg)) {
                 hint = ' If this site was deployed by drag-and-drop, redeploy from the GitHub repo so the Netlify functions are bundled (see FUNCTIONS_SETUP.md).';
             }
