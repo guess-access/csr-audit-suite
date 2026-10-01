@@ -194,7 +194,7 @@ Edit the navbar in `index.html` to link to:
 **Problem:** "File upload failed" or "Please upload an MP3"
 **Solution:**
 - Ensure file is MP3 format (not WAV, M4A, etc.)
-- File size under 3MB (~3 minutes of typical MP3)
+- File size under 10MB (files over 4MB are compressed automatically before upload)
 - Try a different browser (Chrome recommended)
 - Check internet connection
 - Clear browser cache
@@ -215,7 +215,7 @@ Edit the navbar in `index.html` to link to:
 - Check your AI provider's API status (Gemini: status.cloud.google.com,
   Groq: status.groq.com, Anthropic: status.anthropic.com) and Deepgram
   status.deepgram.com
-- Ensure MP3 is valid audio file and under ~3MB (~3 minutes)
+- Ensure MP3 is valid audio file and under 10MB (auto-compressed above 4MB)
 - Try a shorter audio clip first
 
 ### PDF Export Not Working

@@ -3,604 +3,2056 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSR Fundamentals - Module 05 | Call Quality Audit Suite</title>
+    <title>CSR Call Evaluator — Upload &amp; Auto-Score Call Recordings</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --navy: #1a2a4a;
+            --navy-light: #243355;
+            --red: #c0392b;
+            --red-light: #e74c3c;
+            --green: #1e7e4a;
+            --green-light: #27ae60;
+            --gold: #d4a017;
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --border: #dde1e9;
+            --text: #1c2333;
+            --muted: #5a6478;
+            --pass-bg: #eafaf1;
+            --fail-bg: #fdf0ee;
+            --radius: 10px;
+            --shadow: 0 2px 12px rgba(26, 42, 74, 0.08);
         }
 
-        :root {
-            --primary-color: #1e3a8a;
-            --secondary-color: #0ea5e9;
-            --accent-color: #f97316;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --neutral-50: #f9fafb;
-            --neutral-100: #f3f4f6;
-            --neutral-200: #e5e7eb;
-            --neutral-300: #d1d5db;
-            --neutral-400: #9ca3af;
-            --neutral-500: #6b7280;
-            --neutral-600: #4b5563;
-            --neutral-700: #374151;
-            --neutral-800: #1f2937;
-            --neutral-900: #111827;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-            background-color: var(--neutral-50);
-            color: var(--neutral-800);
-            line-height: 1.6;
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
 
-        nav {
-            background-color: white;
-            border-bottom: 1px solid var(--neutral-200);
-            padding: 0 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+        /* HEADER */
+        .header {
+            background: var(--navy);
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid var(--red);
+            gap: 16px;
+        }
+        .header-title { color: white; font-size: 15px; font-weight: 600; }
+        .header-sub {
+            color: white;
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.7;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .header-actions { display: flex; gap: 8px; }
+        .home-link {
+            color: white;
+            font-size: 12px;
+            text-decoration: none;
+            opacity: 0.8;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            padding: 7px 14px;
+            border-radius: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .home-link:hover { background: rgba(255, 255, 255, 0.12); opacity: 1; }
+
+        .main { max-width: 1440px; margin: 0 auto; padding: 28px 20px 70px; }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px 24px;
+            margin-bottom: 20px;
+        }
+        .card-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 14px;
         }
 
-        nav .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        /* STEPS */
+        .steps { display: flex; gap: 8px; margin-bottom: 20px; font-size: 12px; }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 9px 6px;
+            border-radius: 7px;
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .step.active { background: var(--navy); border-color: var(--navy); color: white; }
+        .step.done { background: var(--pass-bg); border-color: #a9dfbf; color: var(--green); }
+
+        /* UPLOAD */
+        .dropzone {
+            border: 2px dashed var(--navy);
+            border-radius: var(--radius);
+            background: #fbfcfd;
+            padding: 34px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .dropzone:hover, .dropzone.dragover { background: #eef2f9; border-color: var(--red); }
+        .dropzone-icon { font-size: 40px; margin-bottom: 10px; }
+        .dropzone-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .dropzone-sub { font-size: 13px; color: var(--muted); }
+        #audioInput { display: none; }
+
+        .file-chip {
+            display: none;
+            align-items: center;
+            gap: 14px;
+            background: var(--pass-bg);
+            border: 1px solid #a9dfbf;
+            border-radius: var(--radius);
+            padding: 14px 16px;
+        }
+        .file-chip.show { display: flex; }
+        .file-chip .f-icon { font-size: 26px; }
+        .file-chip .f-meta { flex: 1; min-width: 0; }
+        .file-chip .f-name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-chip .f-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .file-chip .f-remove {
+            background: white;
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            color: var(--muted);
+        }
+        .file-chip .f-remove:hover { border-color: var(--red); color: var(--red); }
+
+        .fallback-link { display: block; text-align: center; margin-top: 14px; font-size: 12.5px; }
+        .fallback-link a { color: var(--navy); cursor: pointer; text-decoration: underline; }
+        .fallback-box { display: none; margin-top: 14px; }
+        .fallback-box.show { display: block; }
+        .fallback-box textarea {
+            width: 100%;
+            min-height: 130px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 12px;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 13px;
+            resize: vertical;
+            outline: none;
+        }
+        .fallback-box textarea:focus { border-color: var(--navy); }
+
+        /* META GRID */
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .meta-field label {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .meta-field input {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--text);
+            background: #fbfcfd;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .meta-field input:focus { border-color: var(--navy); }
+        .meta-field input.required-missing { border-color: var(--red); background: var(--fail-bg); }
+
+        /* SYSTEM & SCHEDULER CHECKLIST */
+        .checklist {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        .checklist-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .checklist-hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.5; }
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 7px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .check-row:hover { background: #eef2f7; }
+        .check-row input { width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; flex: 0 0 auto; }
+        .check-row em { color: var(--muted); font-style: normal; font-size: 11.5px; }
+        .check-row:has(input:checked) { background: #e8f5ec; }
+        .check-row:has(input:checked) span { font-weight: 600; }
+
+        /* BUTTONS */
+        .btn {
+            padding: 12px 26px;
+            border: none;
+            border-radius: 7px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-primary { background: var(--navy); color: white; }
+        .btn-primary:hover { background: var(--navy-light); }
+        .btn-primary:disabled { background: #9aa4b8; cursor: not-allowed; }
+        .btn-red { background: var(--red); color: white; }
+        .btn-red:hover { background: var(--red-light); }
+        .btn-red:disabled { background: #9aa4b8; cursor: not-allowed; }
+        .btn-ghost { background: white; color: var(--navy); border: 1.5px solid var(--border); }
+        .btn-ghost:hover { border-color: var(--navy); }
+        .actions-row {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* MESSAGES */
+        .msg {
+            display: none;
+            padding: 13px 16px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+        .msg.show { display: block; }
+        .msg.error { background: var(--fail-bg); border: 1px solid #f5b7b1; color: #7c1d12; }
+        .msg.success { background: var(--pass-bg); border: 1px solid #a9dfbf; color: #14532d; }
+
+        /* PROGRESS */
+        #progressSection { display: none; text-align: center; padding: 40px 24px; }
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 4px solid #e3e7ef;
+            border-top-color: var(--red);
+            border-radius: 50%;
+            margin: 0 auto 18px;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-stage { font-size: 15px; font-weight: 600; color: var(--navy); }
+        .progress-hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+        .progress-track {
+            height: 6px;
+            background: #e3e7ef;
+            border-radius: 3px;
+            margin: 20px auto 0;
+            max-width: 380px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 15%;
+            background: linear-gradient(90deg, var(--navy), var(--red));
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* RESULTS */
+        #resultsSection { display: none; }
+
+        .grade-banner {
+            border-radius: var(--radius);
+            border: 2px solid var(--border);
+            background: var(--card);
+            padding: 24px 26px;
+            margin-bottom: 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 70px;
+            gap: 20px;
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+        }
+        .grade-banner.pass { background: var(--pass-bg); border-color: var(--green-light); }
+        .grade-banner.fail { background: var(--fail-bg); border-color: var(--red-light); }
+        .grade-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+        .grade-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 52px;
+            font-weight: 600;
+            line-height: 1.05;
+            color: var(--muted);
+        }
+        .grade-banner.pass .grade-value { color: var(--green); }
+        .grade-banner.fail .grade-value { color: var(--red); }
+        .grade-status { font-size: 13.5px; font-weight: 600; margin-top: 4px; color: var(--muted); }
+        .grade-banner.pass .grade-status { color: var(--green); }
+        .grade-banner.fail .grade-status { color: var(--red); }
+        .grade-right { text-align: right; min-width: 240px; }
+        .grade-right .thresh { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .pts-label { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+        .prog-track {
+            height: 9px;
+            background: #e3e7ef;
+            border-radius: 5px;
+            overflow: hidden;
+            width: 240px;
+            margin-left: auto;
+        }
+        .prog-fill { height: 100%; width: 0; background: var(--muted); border-radius: 5px; transition: width 0.6s ease; }
+        .prog-fill.pass { background: var(--green-light); }
+        .prog-fill.fail { background: var(--red-light); }
+
+        .autofail-banner {
+            display: none;
+            background: var(--red);
+            color: white;
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 18px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .autofail-banner.show { display: block; }
+
+        /* SUMMARY STRIP */
+        .summary-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .summary-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--navy);
+            border-radius: 7px;
+            padding: 10px 12px;
+        }
+        .summary-item .k {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            margin-bottom: 3px;
+        }
+        .summary-item .v { font-size: 13px; font-weight: 600; word-break: break-word; }
+        /* Reason for Call stretches across the row so its right edge lines up
+           with the Customer Phone # panel above it. */
+        #summaryStrip .summary-item.reason { grid-column: 1 / span 4; }
+        @media (max-width: 699px) {
+            #summaryStrip .summary-item.reason { grid-column: 1 / -1; }
+        }
+        .summary-item .v a {
+            color: var(--navy);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-decoration: underline;
+            word-break: break-all;
         }
 
-        nav .logo {
-            font-weight: 700;
-            font-size: 18px;
-            color: var(--primary-color);
-            text-decoration: none;
+        /* SECTIONS + METRICS */
+        .qa-section { margin-bottom: 18px; }
+        .qa-section-header {
+            background: var(--navy);
+            color: white;
+            padding: 11px 16px;
+            border-radius: var(--radius) var(--radius) 0 0;
+            font-size: 13.5px;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
-        nav .logo span {
-            font-size: 24px;
-        }
-
-        nav ul {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-        }
-
-        nav a {
-            color: var(--neutral-600);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        nav a:hover {
-            color: var(--primary-color);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-
-        .header .container {
-            max-width: 800px;
-        }
-
-        .header-badge {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 6px 16px;
-            border-radius: 50px;
+        .qa-section-header.zero { background: var(--red); }
+        .qa-section-header .sec-pts {
+            margin-left: auto;
+            font-family: 'IBM Plex Mono', monospace;
             font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-bottom: 15px;
-            backdrop-filter: blur(10px);
+            opacity: 0.85;
         }
-
-        .header h1 {
-            font-size: 42px;
-            font-weight: 700;
-            margin-bottom: 10px;
+        .qa-rows {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            box-shadow: var(--shadow);
         }
-
-        .header p {
-            font-size: 16px;
-            opacity: 0.95;
-            margin-bottom: 0;
-        }
-
-        main {
-            padding: 3rem 2rem;
-        }
-
-        .quick-start {
-            background: linear-gradient(135deg, rgba(30, 58, 138, 0.05) 0%, rgba(14, 165, 233, 0.05) 100%);
-            border: 1px solid var(--secondary-color);
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 3rem;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .quick-start h3 {
-            color: var(--primary-color);
-            font-size: 18px;
-            margin-bottom: 15px;
-        }
-
-        .quick-start ol {
-            margin-left: 20px;
-            color: var(--neutral-700);
-            font-size: 14px;
-            line-height: 1.8;
-        }
-
-        .quick-start li {
-            margin-bottom: 10px;
-        }
-
-        .dashboard {
-            max-width: 1200px;
-            margin: 0 auto 4rem;
-        }
-
-        .dashboard-grid {
+        .qa-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 28px;
+            grid-template-columns: 30px 1fr 96px;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            align-items: start;
         }
-
-        .tool-card {
-            background: white;
-            border-radius: 8px;
-            border: 1px solid var(--neutral-200);
-            padding: 28px;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
+        .qa-row:last-child { border-bottom: none; }
+        .qa-row.passed { background: var(--pass-bg); }
+        .qa-row.failed { background: var(--fail-bg); }
+        .row-num {
+            width: 26px;
+            height: 26px;
+            background: var(--navy-light);
+            color: white;
+            border-radius: 50%;
+            font-size: 11.5px;
+            font-weight: 600;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
         }
-
-        .tool-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        .qa-row.failed .row-num { background: var(--red); }
+        .row-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+        .row-criteria { font-size: 12px; color: var(--muted); line-height: 1.45; }
+        .row-obs {
+            font-size: 12.5px;
+            color: var(--text);
+            margin-top: 7px;
+            line-height: 1.5;
+            padding-left: 10px;
+            border-left: 2px solid var(--border);
         }
-
-        .tool-card.secondary::before {
-            background: linear-gradient(90deg, var(--success-color), var(--secondary-color));
+        .row-rec {
+            font-size: 12.5px;
+            color: #8a4b00;
+            margin-top: 6px;
+            line-height: 1.5;
+            background: #fff8ec;
+            border: 1px solid #f3dfc0;
+            border-radius: 6px;
+            padding: 7px 9px;
         }
-
-        .tool-card.tertiary::before {
-            background: linear-gradient(90deg, var(--accent-color), var(--warning-color));
+        .row-rec b { color: #a35b00; }
+        .row-right { text-align: center; }
+        .pts-chip {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--navy);
         }
-
-        .tool-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--secondary-color);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-        }
-
-        .tool-card .featured-badge {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 4px 12px;
-            border-radius: 50px;
-            font-size: 11px;
+        .pts-chip .den { font-size: 11px; color: var(--muted); font-weight: 500; }
+        .status-chip {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 10px;
             font-weight: 700;
             letter-spacing: 0.5px;
-        }
-
-        .tool-icon {
-            font-size: 42px;
-            margin-bottom: 12px;
-        }
-
-        .tool-subtitle {
-            font-size: 11px;
-            color: var(--secondary-color);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-            margin-bottom: 8px;
+            padding: 3px 8px;
+            border-radius: 4px;
         }
+        .status-chip.pass { background: var(--green-light); color: white; }
+        .status-chip.partial { background: var(--gold); color: white; }
+        .status-chip.fail, .status-chip.auto-fail { background: var(--red); color: white; }
+        .status-chip.na, .status-chip.not-observed { background: #dde1e9; color: var(--muted); }
 
-        .tool-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--neutral-900);
-            margin-bottom: 12px;
-        }
-
-        .tool-description {
-            font-size: 14px;
-            color: var(--neutral-600);
-            line-height: 1.6;
-            margin-bottom: 16px;
-            flex-grow: 1;
-        }
-
-        .tool-features {
-            font-size: 13px;
-            color: var(--neutral-600);
-            margin-bottom: 20px;
-            padding-top: 16px;
-            border-top: 1px solid var(--neutral-200);
-        }
-
-        .tool-features ul {
-            list-style: none;
-        }
-
-        .tool-features li {
-            padding: 4px 0;
-        }
-
-        .tool-features li:before {
-            content: '✓ ';
-            color: var(--success-color);
-            font-weight: 700;
-            margin-right: 6px;
-        }
-
-        .tool-link {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-            cursor: pointer;
-            text-align: center;
-            width: 100%;
-        }
-
-        .tool-link:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
-        }
-
-        .tool-card.secondary .tool-link {
-            background: linear-gradient(135deg, var(--success-color), var(--secondary-color));
-        }
-
-        .tool-card.secondary .tool-link:hover {
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-        }
-
-        .tool-card.tertiary .tool-link {
-            background: linear-gradient(135deg, var(--accent-color), var(--warning-color));
-            color: white;
-        }
-
-        .tool-card.tertiary .tool-link:hover {
-            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
-        }
-
-        .info-section {
-            background: white;
-            border-radius: 8px;
-            border: 1px solid var(--neutral-200);
-            padding: 28px;
-            margin-bottom: 28px;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .info-section h2 {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--neutral-900);
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid var(--neutral-200);
-        }
-
-        .info-grid {
+        /* COACHING */
+        .feedback-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 6px;
         }
-
-        .info-item {
-            padding: 16px;
-            background: var(--neutral-50);
-            border-radius: 6px;
-            border-left: 4px solid var(--secondary-color);
+        .feedback-box {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            padding: 15px 16px;
+            box-shadow: var(--shadow);
         }
-
-        .info-item h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--neutral-900);
-            margin-bottom: 8px;
+        .feedback-box h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
         }
-
-        .info-item p {
+        .feedback-box.strengths { border-top: 3px solid var(--green-light); }
+        .feedback-box.strengths h4 { color: var(--green); }
+        .feedback-box.opps { border-top: 3px solid var(--gold); }
+        .feedback-box.opps h4 { color: #9a7200; }
+        .feedback-box.concerns { border-top: 3px solid var(--red-light); }
+        .feedback-box.concerns h4 { color: var(--red); }
+        .feedback-box ul { list-style: none; }
+        .feedback-box li {
             font-size: 13px;
-            color: var(--neutral-600);
+            line-height: 1.5;
+            padding: 5px 0 5px 18px;
+            position: relative;
+            border-bottom: 1px dashed var(--border);
+        }
+        .feedback-box li:last-child { border-bottom: none; }
+        .feedback-box li::before { content: '\2022'; position: absolute; left: 4px; color: var(--muted); }
+        .feedback-box .empty { font-size: 12.5px; color: var(--muted); font-style: italic; }
+
+        .coach-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px 20px;
+            margin-bottom: 14px;
+        }
+        .coach-card h3 {
+            font-size: 15px;
+            color: var(--navy);
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .action-item {
+            display: flex;
+            gap: 12px;
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 12px 14px;
+            margin-bottom: 9px;
+        }
+        .action-item:last-child { margin-bottom: 0; }
+        .action-num {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            background: var(--navy);
+            color: white;
+            border-radius: 50%;
+            font-size: 11.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-text { font-size: 13.5px; line-height: 1.55; }
+        .suggestion-item {
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--red);
+            border-radius: 7px;
+            padding: 12px 14px;
+            margin-bottom: 9px;
+        }
+        .suggestion-item:last-child { margin-bottom: 0; }
+        .suggestion-area {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--red);
+            margin-bottom: 5px;
+        }
+        .suggestion-text { font-size: 13.5px; line-height: 1.55; }
+        .suggestion-example {
+            font-size: 13px;
+            color: var(--navy);
+            background: #eef2f9;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-top: 8px;
+            font-style: italic;
             line-height: 1.5;
         }
-
-        .support-section {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-            border-radius: 8px;
-            padding: 32px;
-            text-align: center;
-            margin: 3rem auto;
-            max-width: 1200px;
-        }
-
-        .support-section h2 {
-            font-size: 24px;
-            margin-bottom: 12px;
-            border: none;
-            color: white;
-        }
-
-        .support-section p {
-            font-size: 14px;
-            opacity: 0.95;
-            margin-bottom: 16px;
+        .suggestion-example::before { content: 'Say it like this: '; font-weight: 600; font-style: normal; }
+        .coaching-notes {
+            width: 100%;
+            min-height: 320px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 13px 14px;
+            font-family: inherit;
+            font-size: 13.5px;
             line-height: 1.6;
+            color: var(--text);
+            background: #fbfcfd;
+            resize: vertical;
         }
 
-        .support-section a {
-            color: white;
-            text-decoration: none;
+        details.transcript { margin-top: 4px; }
+        details.transcript summary {
+            cursor: pointer;
+            font-size: 13px;
             font-weight: 600;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-            transition: border-color 0.2s;
+            color: var(--navy);
+            padding: 10px 0;
+            user-select: none;
+        }
+        .transcript-box {
+            background: #fbfcfd;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.65;
+            color: var(--text);
+            height: 65vh;
+            max-height: none;
+            overflow-y: auto;
+            white-space: pre-wrap;
         }
 
-        .support-section a:hover {
-            border-bottom-color: white;
-        }
-
-        footer {
-            background: white;
-            border-top: 1px solid var(--neutral-200);
-            padding: 2rem;
+        .ai-note {
+            font-size: 11.5px;
+            color: var(--muted);
             text-align: center;
-            color: var(--neutral-600);
-            font-size: 12px;
+            margin-top: 16px;
+            font-style: italic;
         }
 
-        footer a {
-            color: var(--secondary-color);
-            text-decoration: none;
-            margin: 0 8px;
+        /* ---- Export (PDF / copy) support ----
+           Keeps every element intact in one continuous document: no scroll
+           clipping, no collapsed panels, and no content dropped at page breaks. */
+        .grade-banner, .summary-item, .qa-section-header, .qa-row,
+        .feedback-box, .action-item, .suggestion-item, .coach-card {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        .qa-section { page-break-inside: auto; break-inside: auto; }
+        .transcript-box { white-space: pre-wrap; word-break: break-word; }
+
+        .coaching-notes-clone {
+            display: none;
+            width: 100%;
+            min-height: 320px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 13px 14px;
+            font-family: inherit;
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: var(--text);
+            background: #fbfcfd;
+            white-space: pre-wrap;
         }
 
-        footer a:hover {
-            text-decoration: underline;
+        #reportArea.export-mode .transcript-box { height: auto; max-height: none; overflow: visible; }
+        #reportArea.export-mode .coaching-notes { display: none; }
+        #reportArea.export-mode .coaching-notes-clone { display: block; }
+
+        /* KEY MODAL */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-backdrop.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: var(--radius);
+            max-width: 520px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal h3 { font-size: 16px; color: var(--navy); margin-bottom: 6px; }
+        .modal p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+        .modal label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            margin-bottom: 5px;
+        }
+        .modal input {
+            width: 100%;
+            padding: 10px 11px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            outline: none;
+        }
+        .modal input:focus { border-color: var(--navy); }
+        .modal .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
+        .modal .btn { padding: 10px 20px; font-size: 13px; }
+        .key-status {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .key-status.set { color: var(--green); }
+
+        @media (max-width: 760px) {
+            .meta-grid { grid-template-columns: 1fr 1fr; }
+            .feedback-grid { grid-template-columns: 1fr; }
+            .qa-row { grid-template-columns: 26px 1fr; }
+            .row-right { grid-column: 2; text-align: left; display: flex; gap: 10px; align-items: center; }
+            .status-chip { margin-top: 0; }
+            .grade-right { text-align: left; }
+            .prog-track { margin-left: 0; }
+            .steps { flex-direction: column; }
+            .header { padding: 14px 18px; }
         }
 
-        @media (max-width: 768px) {
-            nav ul {
-                gap: 1rem;
-            }
-
-            nav a {
-                font-size: 13px;
-            }
-
-            .header h1 {
-                font-size: 28px;
-            }
-
-            .header p {
-                font-size: 14px;
-            }
-
-            main {
-                padding: 2rem 1rem;
-            }
-
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
+        @media print {
+            body { background: white; }
+            .header, .actions-row, #uploadSection, #infoSection, #progressSection,
+            .fallback-link, .ai-note, .no-print { display: none !important; }
+            .card, .qa-rows, .grade-banner, .coach-card, .feedback-box { box-shadow: none; }
+            .qa-row { break-inside: avoid; }
+            .transcript-box { height: auto !important; max-height: none !important; overflow: visible !important; }
         }
     </style>
 </head>
 <body>
-    <nav>
-        <div class="container">
-            <a href="./" class="logo">
-                <span>📚</span>
-                DealerFocus Academy
-            </a>
-            <ul>
-                <li><a href="./">Home</a></li>
-                <li><a href="#tools">Tools</a></li>
-                <li><a href="#about">About</a></li>
-            </ul>
+
+<div class="header">
+    <div>
+        <div class="header-title">CSR Call Evaluator</div>
+        <div class="header-sub">Upload · Transcribe · Score against QA Form</div>
+    </div>
+    <div class="header-actions">
+        <span class="home-link" id="keyBtn">⚙ API Key</span>
+    </div>
+</div>
+
+<div class="main">
+
+    <div class="steps" id="stepsBar">
+        <div class="step active" id="step1">1 · Upload Recording</div>
+        <div class="step" id="step2">2 · Call Details</div>
+        <div class="step" id="step3">3 · Evaluation &amp; Coaching</div>
+    </div>
+
+    <div id="errorMessage" class="msg error"></div>
+    <div id="successMessage" class="msg success"></div>
+
+    <!-- STEP 1: UPLOAD -->
+    <div class="card" id="uploadSection">
+        <div class="card-label">Call Recording</div>
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">🎙️</div>
+            <div class="dropzone-title">Upload Call Recording</div>
+            <div class="dropzone-sub">Click to select or drag an audio file here · max 20&nbsp;MB</div>
+            <input type="file" id="audioInput" accept="audio/mpeg,audio/mp3,.mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a,.mp4,.m4a,.wav">
         </div>
-    </nav>
 
-    <header class="header">
-        <div class="container">
-            <div class="header-badge">MODULE 05 — CALL QUALITY AUDIT</div>
-            <h1>CSR Fundamentals</h1>
-            <p>Professional call evaluation, automated analysis, and coaching development</p>
-        </div>
-    </header>
-
-    <main>
-        <div class="quick-start">
-            <h3>🚀 Quick Start Guide</h3>
-            <ol>
-                <li><strong>Start with Audio Analyzer</strong> — Upload an MP3 call recording for instant AI-powered scoring</li>
-                <li><strong>Review Results</strong> — Get detailed feedback on all CSR Fundamentals metrics (2-5 minutes)</li>
-                <li><strong>Schedule Coaching</strong> — Use the Coaching Template for one-on-one development conversations</li>
-                <li><strong>Track Progress</strong> — Export PDFs and monitor improvements over time</li>
-            </ol>
+        <div class="file-chip" id="fileChip">
+            <div class="f-icon">🎵</div>
+            <div class="f-meta">
+                <div class="f-name" id="fileName"></div>
+                <div class="f-sub" id="fileSub"></div>
+            </div>
+            <button type="button" class="f-remove" id="fileRemove">Change</button>
         </div>
 
-        <div class="dashboard">
-            <div class="dashboard-grid" id="tools">
-                <div class="tool-card primary">
-                    <div class="featured-badge">⭐ RECOMMENDED</div>
-                    <div class="tool-icon">🎵</div>
-                    <div class="tool-subtitle">Automated Analysis</div>
-                    <h3 class="tool-title">Audio Call Analyzer</h3>
-                    <p class="tool-description">Upload MP3 recordings and get instant AI-powered analysis with automatic scoring against all CSR Fundamentals metrics.</p>
-                    <div class="tool-features">
-                        <ul>
-                            <li>Automatic call transcription</li>
-                            <li>18-metric evaluation</li>
-                            <li>Instant scoring (0-100)</li>
-                            <li>Coaching recommendations</li>
-                            <li>PDF export</li>
-                        </ul>
-                    </div>
-                    <a href="audio-analyzer.html" class="tool-link">Launch Tool →</a>
-                </div>
+        <span class="fallback-link">No audio file? <a id="fallbackToggle">Paste the transcript instead</a></span>
+        <div class="fallback-box" id="fallbackBox">
+            <textarea id="manualTranscript" placeholder="Paste the call transcript here (agent and customer turns)..."></textarea>
+        </div>
+    </div>
 
-                <div class="tool-card secondary">
-                    <div class="tool-icon">📋</div>
-                    <div class="tool-subtitle">Manual Review</div>
-                    <h3 class="tool-title">Audit Form</h3>
-                    <p class="tool-description">Manually review and score calls with an interactive form that guides you through each metric with real-time calculations.</p>
-                    <div class="tool-features">
-                        <ul>
-                            <li>18-metric form</li>
-                            <li>Real-time scoring</li>
-                            <li>Detailed notes</li>
-                            <li>Call documentation</li>
-                            <li>PDF export</li>
-                        </ul>
-                    </div>
-                    <a href="audit-form.html" class="tool-link">Launch Tool →</a>
-                </div>
-
-                <div class="tool-card tertiary">
-                    <div class="tool-icon">💬</div>
-                    <div class="tool-subtitle">Coaching & Development</div>
-                    <h3 class="tool-title">Coaching Template</h3>
-                    <p class="tool-description">Conduct structured one-on-one coaching sessions with organized feedback, ratings, and actionable development plans.</p>
-                    <div class="tool-features">
-                        <ul>
-                            <li>Strengths & opportunities</li>
-                            <li>4-category ratings</li>
-                            <li>Action planning</li>
-                            <li>Follow-up tracking</li>
-                            <li>PDF export</li>
-                        </ul>
-                    </div>
-                    <a href="coaching-template.html" class="tool-link">Launch Tool →</a>
-                </div>
+    <!-- STEP 2: CALL DETAILS -->
+    <div class="card" id="infoSection" style="display:none;">
+        <div class="card-label">Call Information</div>
+        <div class="meta-grid">
+            <div class="meta-field">
+                <label for="agentName">Agent Name *</label>
+                <input type="text" id="agentName" placeholder="Enter full name">
+            </div>
+            <div class="meta-field">
+                <label for="callDate">Call Date *</label>
+                <input type="date" id="callDate">
+            </div>
+            <div class="meta-field">
+                <label for="customerName">Customer Name</label>
+                <input type="text" id="customerName" placeholder="Customer full name">
+            </div>
+            <div class="meta-field">
+                <label for="customerPhone">Customer Phone #</label>
+                <input type="text" id="customerPhone" placeholder="(555) 000-0000">
+            </div>
+            <div class="meta-field">
+                <label for="dealership">Dealership Name</label>
+                <input type="text" id="dealership" placeholder="Dealership">
+            </div>
+            <div class="meta-field">
+                <label for="disposition">Call Disposition</label>
+                <input type="text" id="disposition" placeholder="e.g. Warm Transfer – Service">
+            </div>
+            <div class="meta-field" style="grid-column: 1 / -1;">
+                <label for="ioLink">DealerFocus IO Call Link</label>
+                <input type="url" id="ioLink" placeholder="https://... paste the DealerFocus IO call recording link">
             </div>
         </div>
 
-        <div class="info-section" id="about">
-            <h2>📊 Evaluation Metrics</h2>
-            <div class="info-grid">
-                <div class="info-item">
-                    <h3>Section 1: Call Flow (20 pts)</h3>
-                    <p>Proper dealership branding announcement and agent self-introduction</p>
+        <!-- SYSTEM & SCHEDULER CHECKLIST (backstage steps that can't be heard on the call) -->
+        <div class="checklist" id="systemChecklist">
+            <div class="checklist-title">System &amp; Scheduler Checklist</div>
+            <p class="checklist-hint">Verify these backstage steps in your system before analyzing — they cannot be heard on the recording.
+                Checked = verified correct (full points). Unchecked = not verified (0 points).</p>
+            <label class="check-row"><input type="checkbox" id="chkOpCode"><span>Service OP Code used correctly <em>· item 10</em></span></label>
+            <label class="check-row"><input type="checkbox" id="chkAdvisor"><span>Correct advisor or team assigned <em>· item 11</em></span></label>
+            <label class="check-row"><input type="checkbox" id="chkData"><span>Correct data entered — first name, last name and phone number <em>· item 12</em></span></label>
+            <label class="check-row"><input type="checkbox" id="chkHotAlert"><span>Hot alert details added &amp; advisor information inputted <em>· item 15</em></span></label>
+        </div>
+
+        <div class="actions-row" style="margin-top:18px;">
+            <button class="btn btn-ghost" id="backToUpload" type="button">← Back</button>
+            <button class="btn btn-red" id="analyzeBtn" type="button">🎯 Analyze Call &amp; Generate Score</button>
+        </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="card" id="progressSection">
+        <div class="spinner"></div>
+        <div class="progress-stage" id="progressStage">Transcribing call recording…</div>
+        <div class="progress-hint" id="progressHint">Sending audio securely to the speech-to-text service</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="resultsSection">
+        <div id="reportArea">
+
+            <div class="grade-banner" id="gradeBanner">
+                <div>
+                    <div class="grade-label">Final Grade</div>
+                    <div class="grade-value" id="gradeValue">—%</div>
+                    <div class="grade-status" id="gradeStatus"></div>
                 </div>
-                <div class="info-item">
-                    <h3>Section 2: Body of Call (24 pts)</h3>
-                    <p>Reason for transfer, customer name collection, department introduction</p>
-                </div>
-                <div class="info-item">
-                    <h3>Section 3: System Process (21 pts)</h3>
-                    <p>Warm transfer protocol (3-ring hold), data entry accuracy, correct disposition selection</p>
-                </div>
-                <div class="info-item">
-                    <h3>Section 4: Management Skills (35 pts)</h3>
-                    <p>Communication clarity, empathy, active listening, tone, efficiency, and confidence</p>
-                </div>
-                <div class="info-item">
-                    <h3>Section 5: Zero Tolerance (Auto-Fail)</h3>
-                    <p>No rudeness/profanity, no policy violations, no intentional call avoidance</p>
-                </div>
-                <div class="info-item">
-                    <h3>Total Score: 0-100</h3>
-                    <p>85+ Passing (QA form standard) | 70-84 Coaching Required | Below 70 Needs Work | Auto-Fail = 0% + PIP review</p>
+                <div class="grade-right">
+                    <div class="thresh">Passing threshold: 85%</div>
+                    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+                    <div class="pts-label" id="ptsLabel">0 / 100 pts scored</div>
                 </div>
             </div>
-        </div>
 
-        <div class="info-section">
-            <h2>🔄 Recommended Workflow</h2>
-            <div class="info-grid">
-                <div class="info-item">
-                    <h3>Step 1: Analyze</h3>
-                    <p>Upload call to Audio Analyzer or use Audit Form for manual review</p>
+            <div class="autofail-banner" id="autofailBanner">
+                ⚠ AUTO FAIL TRIGGERED — Zero-tolerance behavior observed. Grade is 0% and this call requires PIP enrollment review.
+            </div>
+
+            <div class="summary-strip" id="summaryStrip"></div>
+
+            <div id="sectionsContainer"></div>
+
+            <div class="feedback-grid" style="margin-top:18px;">
+                <div class="feedback-box strengths">
+                    <h4>✓ Strengths Observed</h4>
+                    <ul id="strengthsList"></ul>
                 </div>
-                <div class="info-item">
-                    <h3>Step 2: Review Results</h3>
-                    <p>Review scores, strengths, opportunities, and recommended actions</p>
-                </div>
-                <div class="info-item">
-                    <h3>Step 3: Schedule Coaching</h3>
-                    <p>Plan one-on-one using Coaching Template with analysis results</p>
-                </div>
-                <div class="info-item">
-                    <h3>Step 4: Document</h3>
-                    <p>Export PDFs to personnel files and tracking systems</p>
-                </div>
-                <div class="info-item">
-                    <h3>Step 5: Follow-Up</h3>
-                    <p>Monitor progress in 30 days using updated metrics</p>
-                </div>
-                <div class="info-item">
-                    <h3>Step 6: Track Trends</h3>
-                    <p>Analyze scores over time to identify ongoing training needs</p>
+                <div class="feedback-box opps">
+                    <h4>→ Areas for Development</h4>
+                    <ul id="oppsList"></ul>
                 </div>
             </div>
+            <div class="feedback-box concerns" id="concernsBox" style="margin-top:14px; display:none;">
+                <h4>⚠ Concerns</h4>
+                <ul id="concernsList"></ul>
+            </div>
+
+            <div class="coach-card" style="margin-top:18px;">
+                <h3>🧭 Coaching Plan — How to Make This Call Better</h3>
+                <div id="suggestionsContainer"></div>
+                <div id="actionsContainer" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="coach-card">
+                <h3>📝 Detailed Coaching Notes</h3>
+                <textarea class="coaching-notes" id="coachingNotes" readonly></textarea>
+                <div class="coaching-notes-clone" id="coachingNotesClone"></div>
+            </div>
+
+            <div class="coach-card">
+                <details class="transcript">
+                    <summary>📜 View Full Call Transcript</summary>
+                    <div class="transcript-box" id="transcriptBox"></div>
+                </details>
+            </div>
+
+            <p class="ai-note">AI-generated evaluation — always verify against the recording before making coaching or HR decisions.</p>
         </div>
 
-        <div class="support-section">
-            <h2>How It Works</h2>
-            <p>This comprehensive suite provides three integrated tools for consistent, objective call evaluation and agent development. Whether using automated AI analysis or manual review, you get detailed feedback, coaching guidance, and documentation for training compliance.</p>
-            <p style="font-size: 13px; margin-top: 12px;">
-                Built for DealerFocus Training Hub | <a href="#">Privacy Policy</a> | <a href="#">Terms</a>
-            </p>
+        <div class="actions-row" style="margin-top:18px;">
+            <button class="btn btn-ghost" id="resetBtn" type="button">🔄 Analyze Another Call</button>
+            <button class="btn btn-ghost" id="copyBtn" type="button">📋 Copy Evaluation</button>
+            <button class="btn btn-primary" id="pdfBtn" type="button">📥 Download Report (PDF)</button>
         </div>
-    </main>
+    </div>
+</div>
 
-    <footer>
-        <p>© 2026 DealerFocus Training Academy | CSR Fundamentals Module 05 | All rights reserved</p>
-        <p style="margin-top: 8px;">Version 1.0 | Deployed to Netlify</p>
-    </footer>
+<!-- API KEY MODAL -->
+<div class="modal-backdrop" id="keyModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="keyModalTitle">
+        <h3 id="keyModalTitle">🔑 Groq API Key</h3>
+        <p>
+            This page transcribes audio (Whisper) and scores the QA form (LLM) using the free
+            Groq API, called directly from your browser. Paste a key once — it is saved only in
+            this browser's local storage and never sent anywhere else.
+            <br><br>
+            Get a free key at <b>console.groq.com/keys</b> (no credit card required).
+        </p>
+        <label for="keyInput">API Key</label>
+        <input type="password" id="keyInput" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+        <div class="key-status" id="keyStatus">No key saved yet.</div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" id="keyClear" type="button">Remove Key</button>
+            <button class="btn btn-ghost" id="keyCancel" type="button">Close</button>
+            <button class="btn btn-primary" id="keySave" type="button">Save Key</button>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   Configuration
+   ===================================================================== */
+const MAX_BYTES = 20 * 1024 * 1024;   // Groq accepts up to 25 MB for Whisper
+const PASSING_THRESHOLD = 85;
+const TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODELS_URL = 'https://api.groq.com/openai/v1/models';
+// Preference order. GPT-OSS models are on the free/developer tier and support
+// structured JSON output; the Llama IDs are kept last for enterprise accounts.
+const CHAT_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const CHAT_MODEL_RE = /gpt-oss-120b|gpt-oss-20b|llama-3\.3-70b|llama-3\.1-8b|qwen3\.8-27b/i;
+const CHAT_MODEL_EXCLUDE_RE = /safeguard|prompt-guard|whisper|tts|orpheus|embed/i;
+const KEY_STORAGE = 'groq_api_key';
+
+/* ---------------- QA form definition (from the DealerFocus audit PDF) ---------------- */
+/* Evaluation sheet: "Total possible score | Score obtained | N/A",
+   sections total 100 pts, grade % of available points, passing > 85%. */
+const RUBRIC = {
+    // 1 — Call Flow Procedure (10)
+    1:  { sec: 1, pts: 5, title: 'Proper Branding',          criteria: 'Agent used proper Branding, the Dealership Name?' },
+    2:  { sec: 1, pts: 5, title: 'Agent Introduction',       criteria: 'Did the Agent introduce themselves?' },
+    // 2 — Confirming Customer Information (10)
+    3:  { sec: 2, pts: 5, title: 'Account Search',           criteria: 'Asked for number or name to search for the account in the system?' },
+    4:  { sec: 2, pts: 5, title: 'Customer Verification',    criteria: 'Verified existing Customer Information (Name, Year and Model of the Vehicle) or add New Customer? — doing the step is enough: award full points whenever the item was obtained during the call, whether the agent asked for it or the caller volunteered it; deduct only if the detail used contradicts what the caller said' },
+    // 3 — Body of the Call (25)
+    5:  { sec: 3, pts: 5, title: 'Mileage',                  criteria: 'Agent asked for the mileage?' },
+    6:  { sec: 3, pts: 5, title: 'Additional Concerns',      criteria: 'Agent asked “Besides (confirm service) do you have any additional concerns?”' },
+    7:  { sec: 3, pts: 5, title: 'Drop-Off Duration',        criteria: 'Agent asked if Customer will he/she be dropping it off for the entire day? (Depending on the policy for service) — doing the step is enough: award full points whenever the item was obtained during the call, regardless of whatever the transportation is, whether the agent asked for it or the caller volunteered it' },
+    8:  { sec: 3, pts: 5, title: 'Email / Text Feature',     criteria: 'Confirmed E-mail address or Text Feature?', rule: 'Flagged Full as long as the e-mail was confirmed or asked, regardless if correct or not; Flagged Fail if no e-mail was captured or asked', check: 'Any e-mail/text address anywhere in the call — asked, stated or confirmed?' },
+    9:  { sec: 3, pts: 5, title: 'Closing Branding',         criteria: 'Closed the call with Dealer Name?' },
+    // 4 — System and Scheduler Process Accuracy (27)
+    10: { sec: 4, pts: 3, title: 'Service OP Code',          criteria: 'Use the correct Service OP Code' },
+    11: { sec: 4, pts: 3, title: 'Correct Advisor or Team',  criteria: 'Correct Advisor or Team' },
+    12: { sec: 4, pts: 3, title: 'Data Entry Accuracy',      criteria: 'Input correct data in the Software? (First and Last Name and Phone Number)' },
+    13: { sec: 4, pts: 3, title: 'Transfer Handling',        criteria: 'Transfers the call correctly (Warm Transfer / Cold Transfer) — award the full points when the call disposition does not contain "Transfer"; evaluate it from the transcript only when the disposition is a transfer', conditional: 'transfer' },
+    14: { sec: 4, pts: 5, title: 'Policy Compliance',        criteria: 'Did the agent follow the policy? Must Follow' },
+    15: { sec: 4, pts: 5, title: 'Hot Alert & Advisor Info', criteria: 'Hot Alert (Detailed information added | Advisor information inputed)' },
+    16: { sec: 4, pts: 5, title: 'Call Disposition',         criteria: 'Correct Call Disposition' },
+    // 5 — Call Management Skills (28) — AI-scored against the accuracy rules below
+    17: { sec: 5, pts: 4, title: 'Hold Procedure',           criteria: 'HOLD PROCEDURE — Sets expectation of the hold and the advise for the reason for silence', rule: 'Flagged Full if the silence is less than 1 min; Flagged Partial if the agent went quiet without prior notice regardless of the silence length; Flagged Fail if all rules were not followed', check: 'Silence under 1 min? Prior notice given before going quiet?' },
+    18: { sec: 5, pts: 4, title: 'Communication & Delivery', criteria: 'COMMUNICATION & DELIVERY — Enunciates words and Avoids jargons for smooth understanding - Fluidity', rule: 'Flagged Full if the customer did not say "I can\'t understand you"; Flagged Partial if they had to ask the agent to repeat or slow down; Flagged Fail if the customer said "I can\'t understand you"', check: 'Did the customer say "I can\'t understand you" or ask to repeat?' },
+    19: { sec: 5, pts: 4, title: 'Empathy',                  criteria: "EMPATHY — Acknowledges customer's emotion", rule: "Flagged Full if the customer's emotion is acknowledged, regardless of how it is done; Flagged Partial if acknowledged without assurance of assistance; Flagged Fail if the emotion is ignored", check: 'Emotion acknowledged? Assurance of assistance given?' },
+    20: { sec: 5, pts: 4, title: 'Active Listening',         criteria: 'ACTIVE LISTENING — Avoids repetition Attention to details', rule: 'Recalls specific, correct details from the call', check: 'Details accurate? Questions based on facts?' },
+    21: { sec: 5, pts: 4, title: 'Tone of Voice',            criteria: 'TONE OF VOICE — Sounds accommodating and willing to help', rule: 'Flagged Full if the agent kept his/her calm; Flagged Partial if a sigh was recorded; Flagged Fail if the agent lost patience or raised his/her voice', check: 'Agent stayed calm? Was a sigh recorded?' },
+    22: { sec: 5, pts: 4, title: 'Efficiency',               criteria: 'EFFICIENCY — was the agent concise in delivering a resolution to the customer\u2019s concerns?', rule: 'Resolves the actual problem, not a misdiagnosed one', check: 'Addresses the original issue? Solution actionable?' },
+    23: { sec: 5, pts: 4, title: 'Confidence',               criteria: 'CONFIDENCE — Sounds certain and accurate when providing information/resolution Sounds assuring to resolve issues', rule: 'Certain only with verified info; expresses uncertainty appropriately', check: 'Qualifies unclear info? No false confidence?' },
+    // 6 — Zero Tolerance Behavior (auto fail / PIP enrollment)
+    24: { sec: 6, pts: 0, title: 'Rudeness',                 criteria: 'Uses profanity or condescending statement, condescending tone, interrupts the customer consistently', zero: true },
+    25: { sec: 6, pts: 0, title: 'Service Fail',             criteria: 'Booked appointment when policy says Do Not Book and vice versa; incorrect appointment date/time; failure to confirm/select the appropriate transportation option; or no appointment scheduled', zero: true },
+    26: { sec: 6, pts: 0, title: 'Call Avoidance',           criteria: 'Disconnecting calls intentionally', zero: true }
+};
+const FIRST_ID = 1;
+const LAST_ID = 26;
+/* Fold each skill's Accuracy Rule + Key AI Check into the displayed criteria. */
+Object.keys(RUBRIC).forEach((k) => {
+    const r = RUBRIC[k];
+    if (r.rule) r.criteria += ' — Accuracy rule: ' + r.rule + '. Key AI check: ' + r.check;
+});
+const ZERO_IDS = Object.keys(RUBRIC).map(Number).filter((id) => RUBRIC[id].zero);
+const ZERO_IDS_LABEL = ZERO_IDS.join(', ');
+
+const SECTIONS = [
+    { id: 1, name: 'Call Flow Procedure',                   possible: 10 },
+    { id: 2, name: 'Confirming Customer Information',       possible: 10 },
+    { id: 3, name: 'Body of the call',                      possible: 25 },
+    { id: 4, name: 'System and Scheduler Process Accuracy', possible: 27 },
+    { id: 5, name: 'Call Management Skills',                possible: 28 },
+    { id: 6, name: 'Zero Tolerance Behavior',               possible: 0, zero: true }
+];
+
+/* Backstage items scored from the auditor's checklist on the Call Details tab
+   (they cannot be heard on the recording). */
+const CHECKLIST = [
+    { id: 10, key: 'chkOpCode',  label: 'Service OP Code used correctly' },
+    { id: 11, key: 'chkAdvisor', label: 'Correct advisor or team assigned' },
+    { id: 12, key: 'chkData',    label: 'Correct data entered — first name, last name and phone number' },
+    { id: 15, key: 'chkHotAlert', label: 'Hot alert details added & advisor information inputted' }
+];
+function readChecklist() {
+    const out = {};
+    CHECKLIST.forEach((c) => {
+        const box = document.getElementById(c.key);
+        out[c.id] = !!(box && box.checked);
+    });
+    return out;
+}
+
+const STATUS_LABELS = {
+    'pass': 'Pass',
+    'partial': 'Partial',
+    'fail': 'Fail',
+    'na': 'N/A',
+    'not-observed': 'Not Observed',
+    'auto-fail': 'Auto Fail'
+};
+
+/* =====================================================================
+   State + helpers
+   ===================================================================== */
+let audioFile = null;
+let analysisResults = null;
+let currentTranscript = '';
+
+const $ = (id) => document.getElementById(id);
+
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fmtBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function fmtDuration(sec) {
+    if (!isFinite(sec) || sec <= 0) return '';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+}
+
+function showError(msg) {
+    const el = $('errorMessage');
+    el.textContent = msg;
+    el.classList.add('show');
+    $('successMessage').classList.remove('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showSuccess(msg) {
+    const el = $('successMessage');
+    el.textContent = msg;
+    el.classList.add('show');
+    $('errorMessage').classList.remove('show');
+}
+
+function clearMessages() {
+    $('errorMessage').classList.remove('show');
+    $('successMessage').classList.remove('show');
+}
+
+function setStep(n) {
+    [1, 2, 3].forEach((i) => {
+        const el = $('step' + i);
+        el.classList.toggle('active', i === n);
+        el.classList.toggle('done', i < n);
+    });
+}
+
+/* =====================================================================
+   API key handling (localStorage only)
+   ===================================================================== */
+function getKey() {
+    try { return (localStorage.getItem(KEY_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+}
+
+function setKey(v) {
+    try {
+        if (v) localStorage.setItem(KEY_STORAGE, v);
+        else localStorage.removeItem(KEY_STORAGE);
+    } catch (e) { /* storage disabled — key lives for this session only */ }
+}
+
+function refreshKeyStatus() {
+    const k = getKey();
+    const el = $('keyStatus');
+    if (k) {
+        el.textContent = '✓ Key saved: ' + k.slice(0, 7) + '…' + k.slice(-4);
+        el.classList.add('set');
+        $('keyBtn').textContent = '⚙ API Key ✓';
+    } else {
+        el.textContent = 'No key saved yet.';
+        el.classList.remove('set');
+        $('keyBtn').textContent = '⚙ API Key';
+    }
+}
+
+$('keyBtn').addEventListener('click', () => {
+    $('keyInput').value = getKey();
+    $('keyModal').classList.add('show');
+    $('keyInput').focus();
+});
+$('keyCancel').addEventListener('click', () => $('keyModal').classList.remove('show'));
+$('keyModal').addEventListener('click', (e) => {
+    if (e.target === $('keyModal')) $('keyModal').classList.remove('show');
+});
+$('keySave').addEventListener('click', () => {
+    const v = $('keyInput').value.trim();
+    if (!v) { showError('Please paste a Groq API key (get a free one at console.groq.com/keys).'); return; }
+    setKey(v);
+    refreshKeyStatus();
+    $('keyModal').classList.remove('show');
+    clearMessages();
+    showSuccess('✓ API key saved in this browser.');
+});
+$('keyClear').addEventListener('click', () => {
+    setKey('');
+    $('keyInput').value = '';
+    refreshKeyStatus();
+});
+
+/* =====================================================================
+   Upload
+   ===================================================================== */
+const dropzone = $('dropzone');
+const audioInput = $('audioInput');
+
+dropzone.addEventListener('click', () => audioInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+audioInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+    clearMessages();
+    const okTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a'];
+    const okExt = /\.(mp3|wav|m4a|mp4)$/i.test(file.name);
+    if (!okTypes.includes(file.type) && !okExt) {
+        showError('Please upload an audio file (MP3 format recommended).');
+        return;
+    }
+    if (file.size > MAX_BYTES) {
+        showError('File is ' + fmtBytes(file.size) + ' — please use a file under ' + fmtBytes(MAX_BYTES) + '.');
+        return;
+    }
+
+    audioFile = file;
+    $('fileName').textContent = file.name;
+    $('fileSub').textContent = fmtBytes(file.size) + ' · loading duration…';
+    $('fileChip').classList.add('show');
+    dropzone.style.display = 'none';
+    showSuccess('✓ File loaded: ' + file.name);
+
+    try {
+        const url = URL.createObjectURL(file);
+        const probe = new Audio();
+        probe.preload = 'metadata';
+        probe.onloadedmetadata = () => {
+            const d = fmtDuration(probe.duration);
+            $('fileSub').textContent = fmtBytes(file.size) + (d ? ' · ' + d : '');
+            URL.revokeObjectURL(url);
+        };
+        probe.onerror = () => { $('fileSub').textContent = fmtBytes(file.size); URL.revokeObjectURL(url); };
+        probe.src = url;
+    } catch (err) { /* duration is cosmetic only */ }
+
+    setTimeout(() => {
+        $('uploadSection').style.display = 'none';
+        $('infoSection').style.display = 'block';
+        $('callDate').valueAsDate = new Date();
+        setStep(2);
+    }, 600);
+}
+
+$('fileRemove').addEventListener('click', () => resetToUpload(true));
+$('backToUpload').addEventListener('click', () => resetToUpload(false));
+
+function resetToUpload(clearFile) {
+    clearMessages();
+    if (clearFile) {
+        audioFile = null;
+        audioInput.value = '';
+        $('fileChip').classList.remove('show');
+        dropzone.style.display = 'block';
+    }
+    $('infoSection').style.display = 'none';
+    $('uploadSection').style.display = 'block';
+    setStep(1);
+}
+
+/* transcript fallback toggle */
+$('fallbackToggle').addEventListener('click', (e) => {
+    e.preventDefault();
+    const box = $('fallbackBox');
+    box.classList.toggle('show');
+    if (box.classList.contains('show')) {
+        dropzone.style.display = 'none';
+        $('manualTranscript').focus();
+    } else if (!audioFile) {
+        dropzone.style.display = 'block';
+    }
+});
+
+/* =====================================================================
+   Groq API calls
+   ===================================================================== */
+function setProgress(stage, hint, pct) {
+    $('progressStage').textContent = stage;
+    $('progressHint').textContent = hint;
+    $('progressFill').style.width = pct + '%';
+}
+
+async function groqTranscribe(file, apiKey) {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('model', 'whisper-large-v3');
+    form.append('response_format', 'json');
+
+    let res;
+    try {
+        res = await fetch(TRANSCRIBE_URL, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + apiKey },
+            body: form
+        });
+    } catch (e) {
+        throw new Error('Network error reaching the transcription service — check your connection.');
+    }
+
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* non-JSON */ }
+    if (!res.ok) {
+        const m = data && data.error && data.error.message ? data.error.message : ('HTTP ' + res.status);
+        if (res.status === 401 || res.status === 403) {
+            throw new Error('Transcription rejected the API key (' + m + '). Open ⚙ API Key and paste a valid key from console.groq.com/keys.');
+        }
+        if (res.status === 413 || /too large|maximum file size/i.test(m)) {
+            throw new Error('Audio file is too large for the transcription service (' + m + '). Use a shorter clip.');
+        }
+        throw new Error('Transcription failed: ' + m);
+    }
+    const text = data && data.text ? String(data.text).trim() : '';
+    if (!text) throw new Error('No speech was detected in this file.');
+    return text;
+}
+
+function buildScoringPrompt(transcript, agentName, callDate, disposition, checklist) {
+    const transferActive = /transfer/i.test(disposition || '');
+    const idsOf = (secId) => Object.keys(RUBRIC).map(Number).filter((id) => RUBRIC[id].sec === secId);
+
+    /* Sectioned rubric, grouped exactly like the DealerFocus evaluation sheet. */
+    const rubricTable = SECTIONS.map((s) => {
+        const ids = idsOf(s.id);
+        const secPts = ids.reduce((t, id) => t + RUBRIC[id].pts, 0);
+        const items = ids.map((id) => {
+            const r = RUBRIC[id];
+            return '  - id ' + id + ': "' + r.title + '" — ' + r.criteria +
+                (r.zero ? '  [ZERO-TOLERANCE: auto fail / PIP enrollment]'
+                        : '  [' + r.pts + ' pts possible]');
+        }).join('\n');
+        return s.name + (s.zero ? '' : ' (' + secPts + ' pts)') + '\n' + items;
+    }).join('\n');
+
+    /* Backstage steps: the auditor's checklist on the Call Details tab wins. */
+    const cl = checklist || readChecklist();
+    const checklistBlock =
+        'SYSTEM & SCHEDULER CHECKLIST (auditor-verified — these steps happen outside the call, cannot be heard in the transcript, so this checklist is authoritative):\n' +
+        CHECKLIST.map((c) => '- id ' + c.id + ' ' + c.label + ' — ' + (cl[c.id] ? 'VERIFIED CORRECT' : 'NOT VERIFIED')).join('\n') + '\n' +
+        'For items ' + CHECKLIST.map((c) => c.id).join(', ') + ' follow the checklist instead of the transcript: VERIFIED CORRECT → status "pass" with ' +
+        'the full points and observation "Verified on the auditor checklist: <item>". NOT VERIFIED → status "fail", score_earned 0, ' +
+        'observation "Not verified on the auditor checklist."\n\n';
+
+    /* Call Management Skills (17-23): scored by the AI against the accuracy
+       rules and key checks from the audit summary table. */
+    const skillBlock =
+        'CALL MANAGEMENT SKILLS — ACCURACY RULES & KEY AI CHECKS (these govern items 17-23; run each check against the transcript):\n' +
+        Object.keys(RUBRIC).map(Number).filter((id) => RUBRIC[id].rule).map((id) => {
+            const r = RUBRIC[id];
+            return '- id ' + id + ' ' + r.title + ' — Accuracy rule: ' + r.rule + ' | Key AI check: ' + r.check;
+        }).join('\n') + '\n' +
+        'Score these seven items strictly on those checks: full points only when the Key AI Check passes on clear evidence, partial ' +
+        '(about half) when it partly passes, and 0 when it fails or the transcript shows no evidence. Put the check result in the ' +
+        'observation (e.g. "Hold 2 min — timeframe realistic, reason valid."). Do not award points for politeness alone.\n\n';
+
+    const jsonLines = Object.keys(RUBRIC).map(Number).map((id) => {
+        const r = RUBRIC[id];
+        const st = r.zero ? 'auto-fail|not-observed' : 'pass|partial|fail|na';
+        return '    {"id": ' + id + ', "status": "' + st + '", "score_earned": ' + (r.zero ? 0 : r.pts) +
+            ', "observation": "...", "recommendation": ""}';
+    }).join(',\n');
+
+    return 'You are a strict automotive dealership QA auditor scoring a customer service call transcript against the DealerFocus evaluation sheet.\n\n' +
+        'Agent: ' + agentName + '\nCall date: ' + callDate + '\nCall disposition: "' + (disposition || '(not set)') + '"\n\n' +
+        'TRANSCRIPT:\n"""\n' + transcript.slice(0, 60000) + '\n"""\n\n' +
+        'SCORE EVERY ONE OF THE ' + LAST_ID + ' ITEMS BELOW AGAINST THE TRANSCRIPT:\n' + rubricTable + '\n\n' +
+        checklistBlock +
+        skillBlock +
+        'SCORING RULES:\n' +
+        '1. Scored items (ids 1-16 and 17-23 — items 17-23 follow the accuracy rules above, items ' + ZERO_IDS_LABEL + ' are zero-tolerance) are worth 0 up to their maximum points. Award FULL points only when the behavior is clearly ' +
+        'evidenced in the transcript, PARTIAL credit when it is partly demonstrated (e.g. 2 of 4, or set status "partial"), and 0 when ' +
+        'it did not happen or there is no evidence. status must be "pass" (full points), "partial" (some points), or "fail" (0 points), ' +
+        'and score_earned must be the actual points awarded.\n' +
+        '2. Zero-tolerance items (ids ' + ZERO_IDS_LABEL + ') are TRUE/FALSE: status must be exactly "auto-fail" if observed, otherwise ' +
+        '"not-observed", always with score_earned 0. If ANY of them is "auto-fail", the final grade becomes 0% and the call requires PIP enrollment review.\n' +
+        '3. Use status "na" ONLY for an item that genuinely does not apply to this call; those points are removed from the available total ' +
+        'instead of counting as a miss (this is the evaluation sheet\'s "N/A" column).\n' +
+        '4. DISPOSITION RULE — item 13 (Transfer Handling): ' +
+        (transferActive
+            ? 'this call disposition DOES contain "Transfer", so evaluate item 13 from the transcript (was the warm/cold transfer performed correctly?).\n'
+            : 'this call disposition does NOT contain "Transfer", so no transfer was required — award the full 3 points with observation ' +
+              '"Awarded full points — disposition is not a transfer."\n') +
+        '5. Only award points that are clearly evidenced in the transcript. Be strict, not generous — never assume a behavior happened.\n' +
+        '6. STEP-BASED RULE — doing the step is enough (items 4, 7 and 8). Award full points whenever the item was obtained during the call, ' +
+        'whether the agent asked for it or the caller volunteered it, and accept information given by the caller with no read-back, confirmation, ' +
+        'spelling check or system lookup required:\n' +
+        '   • Item 4 (Customer Verification): full points whenever the customer information (name, year and model) or new-customer entry was obtained.\n' +
+        '   • Item 7 (Drop-Off Duration): full points whenever the drop-off/transportation arrangement was obtained — REGARDLESS of whatever the ' +
+        'transportation is (full-day drop-off, wait, ride, loaner, pickup or anything else); the transportation choice is never a reason to deduct.\n' +
+        '   • Item 8 (Email / Text Feature): FLAGGED FULL as long as an e-mail address or text feature was ASKED FOR, STATED BY THE AGENT or ' +
+        'CONFIRMED (a customer "yeah / yes / okay" to it counts) — REGARDLESS of whether it is correct: a garbled or wrong address still earns ' +
+        'full points, and the caller may volunteer it. Search the whole transcript for any address before deciding — e.g. the agent says ' +
+        '"I will send you the confirmation to hollyju-sbri@aoa.com" and the customer says "Yeah" → FULL points even though the address is wrong. ' +
+        'FLAGGED FAIL only if NO e-mail/text address appears anywhere in the call AND it was never asked for. If item 14 (Policy Compliance) is ' +
+        'judged on this same e-mail/text requirement, apply this rule there as well — asking, stating or confirming it satisfies the policy, and ' +
+        'correctness never matters.\n' +
+        'This overrides rules 1 and 5 for these three items — never deduct merely because the detail came from the caller, was volunteered rather ' +
+        'than asked for, or was never confirmed against a system record. Correctness NEVER matters for item 8. For items 4 and 7 the ONLY exception ' +
+        'is a detail that contradicts what the caller actually ' +
+        'provided (e.g. the caller is Colleen but the agent confirms or enters "Ms. Pauline Lee") → status "partial" with about half the points, ' +
+        'or "fail" if that wrong detail was written into the booking/record; state the exact conflicting values in the observation. ' +
+        'For every other item, award points only when the behavior is evidenced (rules 1 and 5).\n' +
+        '7. Every item needs a short "observation" (max 25 words) quoting or paraphrasing what actually happened in the call. For any item NOT ' +
+        'earning full points the "recommendation" MUST contain BOTH parts, in this exact format (max 40 words total):\n' +
+        '   Customer’s line: "…" → Better spiel: "…"\n' +
+        '   Part 1 is the customer’s exact words from the transcript at the moment the agent was flagged (use the agent’s flagged words instead, ' +
+        'labelled Agent’s line: "…", when the flag has no customer line — e.g. an unannounced silence or a sigh). Part 2 is a verbatim phrase the ' +
+        'agent should have said instead — a concrete, ready-to-use spiel. Always write the → Better spiel: part. Quote real transcript words ' +
+        'verbatim — never invent placeholders such as "...". Only items earning full points ' +
+        'use "" (empty string). Keep every field concise — long answers get truncated.\n' +
+        '8. The section totals add to 100 points; the final grade is points earned divided by points available (minus any N/A items), ' +
+        'as a percentage. Passing threshold is 85%.\n' +
+        '\n' +
+        'RESPOND WITH STRICT JSON ONLY (no markdown, no commentary) IN EXACTLY THIS SHAPE:\n' +
+        '{\n' +
+        '  "reason_for_call": "one short sentence covering what the customer wanted and the outcome, or empty string if unclear",\n' +
+        '  "metrics": [\n' +
+        jsonLines + '\n' +
+        '  ],\n' +
+        '  "strengths": ["2-4 short bullets of what the agent did well"],\n' +
+        '  "opportunities": ["2-4 short bullets of what to improve"],\n' +
+        '  "concerns": ["only include if there are real risks/compliance issues, otherwise an empty array"],\n' +
+        '  "recommended_actions": ["2-4 concrete next steps for the supervisor"],\n' +
+        '  "coaching_suggestions": [\n' +
+        '    {"area": "skill area", "suggestion": "specific coaching advice", "example": "the customer’s flagged line, then the better spiel the agent should say instead"}\n' +
+        '  ],\n' +
+        '  "coaching_notes": "3-5 sentence paragraph a supervisor would read aloud in a coaching session"\n' +
+        '}\n' +
+        'The "metrics" array must contain all ' + LAST_ID + ' entries with ids ' + FIRST_ID + ' through ' + LAST_ID + '.';
+}
+
+/* Ask Groq which models this key can actually use, so we never guess. */
+async function discoverModels(apiKey) {
+    try {
+        const res = await fetch(MODELS_URL, { headers: { 'Authorization': 'Bearer ' + apiKey } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const ids = (Array.isArray(data.data) ? data.data : [])
+            .map((m) => m && m.id)
+            .filter((id) => typeof id === 'string' && !CHAT_MODEL_EXCLUDE_RE.test(id));
+        if (!ids.length) return null;
+        const ordered = CHAT_MODELS.filter((m) => ids.includes(m));
+        ids.forEach((id) => { if (!ordered.includes(id) && CHAT_MODEL_RE.test(id)) ordered.push(id); });
+        return ordered.length ? ordered : ids;
+    } catch (e) {
+        return null; // discovery is best-effort — fall back to CHAT_MODELS
+    }
+}
+
+async function groqScore(transcript, agentName, callDate, disposition, apiKey, checklist) {
+    const messages = [
+        {
+            role: 'system',
+            content: 'You are a meticulous QA scoring engine. You output valid JSON only, never markdown or prose.'
+        },
+        { role: 'user', content: buildScoringPrompt(transcript, agentName, callDate, disposition, checklist) }
+    ];
+
+    const discovered = await discoverModels(apiKey);
+    const candidates = (discovered || CHAT_MODELS).slice(0, 5);
+
+    let lastErr = null;
+
+    for (const model of candidates) {
+        // Try with JSON mode first; if this model rejects response_format, retry plain.
+        const payloadVariants = [
+            { response_format: { type: 'json_object' } },
+            {}
+        ];
+
+        for (let v = 0; v < payloadVariants.length; v++) {
+            let res;
+            try {
+                res = await fetch(CHAT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + apiKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(Object.assign({
+                        model: model,
+                        messages: messages,
+                        temperature: 0.2,
+                        max_tokens: 16000
+                    }, payloadVariants[v]))
+                });
+            } catch (e) {
+                throw new Error('Network error reaching the scoring service — check your connection.');
+            }
+
+            let data = null;
+            try { data = await res.json(); } catch (e) { /* non-JSON */ }
+            const errMsg = data && data.error && data.error.message ? data.error.message : ('HTTP ' + res.status);
+
+            if (res.ok && data && data.choices && data.choices[0] && data.choices[0].message) {
+                const raw = data.choices[0].message.content || '';
+                const parsed = tryParseJSON(raw);
+                if (parsed) return parsed;
+                lastErr = new Error('The scoring model "' + model + '" returned malformed JSON — please run the analysis again.');
+                break; // malformed output: move on to the next model
+            }
+
+            if (res.status === 401 || res.status === 403) {
+                throw new Error('The API key was rejected (' + errMsg + '). Open ⚙ API Key and paste a valid key from console.groq.com/keys.');
+            }
+
+            // This model refused the request — decide whether to retry without JSON mode or skip it.
+            const modelUnavailable = /does not exist|do not have access|model_not_found|decommissioned|invalid model/i.test(errMsg);
+            const fmtRejected = /response_format|json_object|structured|schema/i.test(errMsg);
+            // The model produced output JSON mode could not accept (usually truncation).
+            const genFailed = /failed_generation|failed to generate json|invalid json|please adjust your prompt/i.test(errMsg);
+            if (genFailed) {
+                lastErr = new Error('The scoring model "' + model + '" could not produce complete JSON — please run the analysis again.');
+                break; // try the next model
+            }
+            if (!modelUnavailable && fmtRejected && v === 0) continue;      // retry same model, plain output
+            if (modelUnavailable || fmtRejected) { lastErr = new Error(errMsg); break; } // next model
+            throw new Error(errMsg);
+        }
+    }
+
+    throw lastErr || new Error('No usable chat model is available on this API key.');
+}
+
+function tryParseJSON(text) {
+    if (!text) return null;
+    let t = text.trim();
+    if (t.startsWith('```')) {
+        t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    }
+    try { return JSON.parse(t); } catch (e) { /* fall through */ }
+    const s = t.indexOf('{');
+    const eIdx = t.lastIndexOf('}');
+    if (s !== -1 && eIdx > s) {
+        try { return JSON.parse(t.slice(s, eIdx + 1)); } catch (err) { /* give up */ }
+    }
+    return null;
+}
+
+/* =====================================================================
+   Analysis pipeline
+   ===================================================================== */
+function fileToBase64NotNeeded() { /* audio is sent as multipart FormData */ }
+
+async function analyzeCall() {
+    clearMessages();
+
+    const agentName = $('agentName').value.trim();
+    const callDate = $('callDate').value;
+    $('agentName').classList.toggle('required-missing', !agentName);
+    $('callDate').classList.toggle('required-missing', !callDate);
+
+    const manualText = $('manualTranscript').value.trim();
+    const apiKey = getKey();
+
+    if (!audioFile && !manualText) {
+        showError('Please upload an audio recording or paste a transcript.');
+        return;
+    }
+    if (!agentName) { showError('Please enter the agent name.'); return; }
+    if (!callDate) { showError('Please enter the call date.'); return; }
+
+    if (!apiKey) {
+        showError('No API key saved. Click ⚙ API Key in the header and paste a free Groq key from console.groq.com/keys.');
+        $('keyModal').classList.add('show');
+        return;
+    }
+
+    $('analyzeBtn').disabled = true;
+    $('infoSection').style.display = 'none';
+    $('progressSection').style.display = 'block';
+    setStep(3);
+
+    let stage = manualText ? 'analyze' : 'transcribe';
+
+    try {
+        let transcript = manualText;
+
+        if (!transcript) {
+            setProgress('Transcribing call recording…',
+                'Sending audio securely to the speech-to-text service', 35);
+            transcript = await groqTranscribe(audioFile, apiKey);
+        }
+
+        stage = 'analyze';
+        setProgress('Scoring against the QA form…',
+            'Evaluating the QA metrics across ' + SECTIONS.length + ' sections and writing coaching feedback' +
+            (/transfer/i.test($('disposition').value) ? '' : ' (Transfer Handling awarded full points — disposition is not a transfer)'), 75);
+        const analysis = await groqScore(transcript, agentName, callDate, $('disposition').value.trim(), apiKey, readChecklist());
+
+        if (!analysis) throw new Error('Analysis returned no results.');
+
+        analysisResults = normalizeResult(analysis);
+        currentTranscript = transcript;
+        setProgress('Done', '', 100);
+        renderResults();
+
+    } catch (error) {
+        $('progressSection').style.display = 'none';
+        $('infoSection').style.display = 'block';
+        setStep(2);
+        const stepLabel = stage === 'transcribe' ? 'Transcription failed: ' : 'Scoring failed: ';
+        showError(stepLabel + (error.message || String(error)));
+    } finally {
+        $('analyzeBtn').disabled = false;
+    }
+}
+
+$('analyzeBtn').addEventListener('click', analyzeCall);
+
+/* =====================================================================
+   Client-side scoring arithmetic (authoritative — LLM only supplies statuses)
+   ===================================================================== */
+function normalizeResult(raw) {
+    const rawMetrics = Array.isArray(raw.metrics) ? raw.metrics : [];
+    const byId = {};
+    rawMetrics.forEach((m, i) => {
+        const id = m && m.id != null ? Number(m.id) : i + 1;
+        if (RUBRIC[id] && byId[id] === undefined) byId[id] = m;
+    });
+
+    const rows = [];
+    const secEarned = {};
+    const secPossible = {};
+    SECTIONS.forEach((s) => { secEarned[s.id] = 0; secPossible[s.id] = 0; });
+    const autoFailItems = [];
+
+    /* #13 Transfer Handling (and any other conditional item) only scores when the
+       call disposition contains the word "Transfer". Otherwise it is N/A: excluded
+       from the denominator instead of counting as a fail — same as the audit sheet's
+       "N/A" column. The N/A column on the PDF also lets the scorer mark any item
+       genuinely not applicable; those points are simply not available on that call. */
+    const disposition = ($('disposition') ? $('disposition').value : '').trim();
+    const transferActive = /transfer/i.test(disposition);
+
+    for (let id = FIRST_ID; id <= LAST_ID; id++) {
+        const rubric = RUBRIC[id];
+        const m = byId[id] || {};
+        const statusRaw = String(m.status || '').toLowerCase().trim();
+        const transferNoMatch = rubric.conditional === 'transfer' && !transferActive;
+        let status, earned;
+        let deactivated = false;
+
+        if (transferNoMatch) {
+            // Disposition has no "Transfer" → award full points (no transfer was required).
+            status = 'pass';
+            earned = rubric.pts;
+        } else if (rubric.zero) {
+            // Zero tolerance: auto fail / PIP enrollment — TRUE/FALSE style.
+            const fail = ['auto-fail', 'auto_fail', 'autofail', 'fail', 'triggered', 'yes', 'true'].includes(statusRaw);
+            status = fail ? 'auto-fail' : 'not-observed';
+            earned = 0;
+            if (fail) autoFailItems.push(id);
+        } else if (['na', 'n/a', 'not applicable'].includes(statusRaw)) {
+            status = 'na';
+            earned = 0;
+            deactivated = true;
+        } else {
+            // Point-based scoring (the sheet allows partial credit, e.g. 2 of 4).
+            const rawPts = m.score_earned;
+            const n = Number(rawPts);
+            if (rawPts != null && String(rawPts).trim() !== '' && isFinite(n)) {
+                earned = Math.min(rubric.pts, Math.max(0, Math.round(n)));
+            } else if (['pass', 'yes', 'full', 'full points'].includes(statusRaw)) {
+                earned = rubric.pts;
+            } else if (['partial', 'partially', 'part'].includes(statusRaw)) {
+                earned = Math.round(rubric.pts / 2);
+            } else {
+                earned = 0; // fail / no / missing evidence
+            }
+            status = earned >= rubric.pts ? 'pass' : earned > 0 ? 'partial' : 'fail';
+        }
+
+        /* System & Scheduler checklist (Call Details tab) is authoritative for the
+           backstage items — they cannot be heard on the recording. */
+        const clItem = CHECKLIST.find((c) => c.id === id);
+        const clChecked = clItem ? !!(document.getElementById(clItem.key) || {}).checked : false;
+        if (clItem) {
+            deactivated = false;
+            earned = clChecked ? rubric.pts : 0;
+            status = clChecked ? 'pass' : 'fail';
+        }
+
+        /* Call Management Skills (17-23) are scored by the AI against the accuracy
+           rules + key checks — nothing else overrides them. */
+
+        let observation = typeof m.observation === 'string' ? m.observation.trim() : '';
+        let recommendation = typeof m.recommendation === 'string' ? m.recommendation.trim() : '';
+        if (transferNoMatch) {
+            observation = 'Awarded full points — disposition "' + (disposition || '(not set)') + '" does not contain "Transfer", so no transfer was required.';
+            recommendation = '';
+        } else if (clItem) {
+            observation = clChecked
+                ? 'Verified on the auditor checklist: ' + clItem.label + '.'
+                : 'Not verified on the auditor checklist.';
+            recommendation = clChecked
+                ? ''
+                : 'Confirm this step in the system, then tick it on the Call Details tab.';
+        }
+
+        rows.push({
+            id,
+            sec: rubric.sec,
+            title: rubric.title,
+            criteria: rubric.criteria,
+            possible: rubric.pts,
+            zero: !!rubric.zero,
+            deactivated,
+            status,
+            earned,
+            observation,
+            recommendation
+        });
+
+        secEarned[rubric.sec] = (secEarned[rubric.sec] || 0) + earned;
+        if (!deactivated && !rubric.zero) {
+            secPossible[rubric.sec] = (secPossible[rubric.sec] || 0) + rubric.pts;
+        }
+    }
+
+    const scoreable = rows.filter((r) => !r.zero && !r.deactivated);
+    const total = scoreable.reduce((s, r) => s + r.earned, 0);
+    const possibleActive = scoreable.reduce((s, r) => s + r.possible, 0);
+    const autoFail = autoFailItems.length > 0;
+    // Percentage of the points that were actually available on this call.
+    const grade = autoFail ? 0 : (possibleActive > 0 ? Math.round((total / possibleActive) * 100) : 0);
+
+    const strArr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
+
+    return {
+        grade,
+        total,
+        possibleActive,
+        transferActive,
+        disposition,
+        passed: !autoFail && grade >= PASSING_THRESHOLD,
+        autoFail,
+        autoFailItems,
+        rows,
+        sections: SECTIONS.map((s) => ({
+            ...s,
+            earned: s.zero ? 0 : secEarned[s.id],
+            possible: s.zero ? 0 : secPossible[s.id]
+        })),
+        reasonForCall: typeof raw.reason_for_call === 'string' ? raw.reason_for_call.trim() : '',
+        strengths: strArr(raw.strengths),
+        opportunities: strArr(raw.opportunities),
+        concerns: strArr(raw.concerns),
+        recommendedActions: strArr(raw.recommended_actions),
+        coachingSuggestions: Array.isArray(raw.coaching_suggestions)
+            ? raw.coaching_suggestions
+                .filter((s) => s && typeof s === 'object')
+                .map((s) => ({
+                    area: String(s.area || '').trim(),
+                    suggestion: String(s.suggestion || '').trim(),
+                    example: String(s.example || '').trim()
+                }))
+                .filter((s) => s.suggestion)
+            : [],
+        coachingNotes: typeof raw.coaching_notes === 'string' ? raw.coaching_notes.trim() : ''
+    };
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+function fillList(listEl, items, emptyText) {
+    if (items.length) {
+        listEl.innerHTML = items.map((t) => '<li>' + esc(t) + '</li>').join('');
+    } else {
+        listEl.innerHTML = '<li class="empty">' + esc(emptyText) + '</li>';
+    }
+}
+
+function renderResults() {
+    const r = analysisResults;
+    $('progressSection').style.display = 'none';
+    $('resultsSection').style.display = 'block';
+
+    // Grade banner
+    const banner = $('gradeBanner');
+    banner.classList.remove('pass', 'fail');
+    banner.classList.add(r.passed ? 'pass' : 'fail');
+    $('gradeValue').textContent = r.grade + '%';
+    const naCount = r.rows.filter((x) => x.deactivated && !x.zero).length;
+    $('ptsLabel').textContent = r.total + ' / ' + r.possibleActive + ' pts scored' +
+        (naCount ? '  (' + naCount + ' item' + (naCount > 1 ? 's' : '') + ' N/A — not scored)' : '');
+    const fill = $('progFill');
+    fill.classList.remove('pass', 'fail');
+    fill.classList.add(r.passed ? 'pass' : 'fail');
+    fill.style.width = r.grade + '%';
+
+    let statusText;
+    if (r.autoFail) statusText = '⚠ Auto Fail — PIP enrollment required';
+    else if (r.passed) statusText = '✓ Passing — meets the 85% standard';
+    else if (r.grade >= 70) statusText = 'Below passing — coaching required';
+    else statusText = 'Needs improvement — coaching required';
+    $('gradeStatus').textContent = statusText;
+
+    $('autofailBanner').classList.toggle('show', r.autoFail);
+
+    // Call Details block — mirrors the Call Details tab exactly (same fields, same order).
+    const ioLink = $('ioLink').value.trim();
+    const ioUrl = /^https?:\/\/\S+$/i.test(ioLink) ? ioLink : '';
+    const sec5 = r.sections.find((s) => s.id === 5) || { earned: 0, possible: 0 };
+    const meta = [
+        ['Agent Name', $('agentName').value.trim() || '—'],
+        ['Call Date', $('callDate').value || '—'],
+        ['Customer Name', $('customerName').value.trim() || '—'],
+        ['Customer Phone #', $('customerPhone').value.trim() || '—'],
+        ['Dealership Name', $('dealership').value.trim() || '—'],
+        ['Call Disposition', $('disposition').value.trim() || '—'],
+        ['DealerFocus IO Call Link', ioUrl
+            ? '<a href="' + esc(ioUrl) + '" target="_blank" rel="noopener noreferrer">🔗 Open IO Call Link</a>'
+            : (ioLink ? esc(ioLink) : '—')],
+        ['Reason for Call', r.reasonForCall || '—'],
+        ['Transfer Handling (13)', r.transferActive
+            ? '✓ Scored from the transcript'
+            : '✓ Full points — disposition has no "Transfer"'],
+        ['System Checklist', (function () {
+            const cl = readChecklist();
+            const done = CHECKLIST.filter((c) => cl[c.id]).length;
+            return done + '/' + CHECKLIST.length + ' verified';
+        })()],
+        ['Call Management Skills', 'AI scored — ' + sec5.earned + '/' + sec5.possible + ' pts']
+    ];
+    $('summaryStrip').innerHTML = meta.map(([k, v]) =>
+        '<div class="summary-item' + (k === 'Reason for Call' ? ' reason' : '') + '">' +
+        '<div class="k">' + esc(k) + '</div><div class="v">' + v + '</div></div>'
+    ).join('');
+
+    // Sections + metric rows
+    $('sectionsContainer').innerHTML = r.sections.map((sec) => {
+        const secRows = r.rows.filter((row) => row.sec === sec.id);
+        const rowsHTML = secRows.map((row, i) => {
+            const cls = row.zero
+                ? (row.status === 'auto-fail' ? 'failed' : '')
+                : (row.status === 'pass' ? 'passed' : (row.status === 'fail' ? 'failed' : ''));
+            const ptsText = (row.zero || row.deactivated)
+                ? '—'
+                : '<span class="pts-chip">' + row.earned + '<span class="den"> / ' + row.possible + '</span></span>';
+            const statusHTML = row.deactivated
+                ? '<span class="status-chip na">N/A</span>'
+                : '<span class="status-chip ' + esc(row.status) + '">' +
+                  esc(STATUS_LABELS[row.status] || row.status) + '</span>';
+            const obsHTML = row.observation
+                ? '<div class="row-obs">' + esc(row.observation) + '</div>' : '';
+            /* Coaching shows the flagged customer line first, then the better spiel. */
+            let recHTML = '';
+            if (row.recommendation) {
+                const rp = row.recommendation.split(' → Better spiel:');
+                let head = esc(rp[0]).replace(/^(Customer&#39;s line|Agent&#39;s line):/, '<b>$1:</b>');
+                if (rp.length > 1) head += '<br><b>Better spiel:</b> ' + esc(rp[1]);
+                recHTML = '<div class="row-rec"><b>Coaching:</b> ' + head + '</div>';
+            }
+
+            return '<div class="qa-row ' + cls + '">' +
+                '<div class="row-num">' + (i + 1) + '</div>' +
+                '<div>' +
+                    '<div class="row-title">' + esc(row.title) + '</div>' +
+                    '<div class="row-criteria">' + esc(row.criteria) + '</div>' +
+                    obsHTML + recHTML +
+                '</div>' +
+                '<div class="row-right">' + ptsText + '<br>' + statusHTML + '</div>' +
+            '</div>';
+        }).join('');
+
+        const ptsLabel = sec.zero ? 'Zero Tolerance' : sec.earned + ' / ' + sec.possible + ' pts';
+        return '<div class="qa-section">' +
+            '<div class="qa-section-header' + (sec.zero ? ' zero' : '') + '">' +
+                esc(sec.name) + '<span class="sec-pts">' + esc(ptsLabel) + '</span>' +
+            '</div>' +
+            '<div class="qa-rows">' + rowsHTML + '</div>' +
+        '</div>';
+    }).join('');
+
+    // Feedback
+    fillList($('strengthsList'), r.strengths, 'No specific strengths noted.');
+    fillList($('oppsList'), r.opportunities, 'No development areas noted.');
+    const concernsBox = $('concernsBox');
+    if (r.concerns.length) {
+        fillList($('concernsList'), r.concerns, '');
+        concernsBox.style.display = 'block';
+    } else {
+        concernsBox.style.display = 'none';
+    }
+
+    // Coaching suggestions
+    $('suggestionsContainer').innerHTML = r.coachingSuggestions.length
+        ? r.coachingSuggestions.map((s) =>
+            '<div class="suggestion-item">' +
+                (s.area ? '<div class="suggestion-area">' + esc(s.area) + '</div>' : '') +
+                '<div class="suggestion-text">' + esc(s.suggestion) + '</div>' +
+                (s.example ? '<div class="suggestion-example">' + esc(s.example) + '</div>' : '') +
+            '</div>'
+        ).join('')
+        : '<p style="font-size:13px;color:var(--muted);font-style:italic;">No specific suggestions generated.</p>';
+
+    // Recommended actions
+    $('actionsContainer').innerHTML = r.recommendedActions.length
+        ? r.recommendedActions.map((a, i) =>
+            '<div class="action-item">' +
+                '<div class="action-num">' + (i + 1) + '</div>' +
+                '<div class="action-text">' + esc(a) + '</div>' +
+            '</div>'
+        ).join('')
+        : '';
+
+    // Coaching notes + transcript
+    $('coachingNotes').value = r.coachingNotes || 'No coaching notes generated.';
+    $('transcriptBox').textContent = currentTranscript || '—';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* =====================================================================
+   Reset + PDF
+   ===================================================================== */
+$('resetBtn').addEventListener('click', () => {
+    analysisResults = null;
+    currentTranscript = '';
+    audioFile = null;
+    audioInput.value = '';
+    $('fileChip').classList.remove('show');
+    dropzone.style.display = 'block';
+    $('fallbackBox').classList.remove('show');
+    $('manualTranscript').value = '';
+    ['agentName', 'customerName', 'customerPhone', 'dealership', 'disposition', 'ioLink'].forEach((id) => { $(id).value = ''; });
+    CHECKLIST.forEach((c) => { const b = $(c.key); if (b) b.checked = false; });
+    $('resultsSection').style.display = 'none';
+    $('progressSection').style.display = 'none';
+    $('infoSection').style.display = 'none';
+    $('uploadSection').style.display = 'block';
+    clearMessages();
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* =====================================================================
+   Export: shared mode that expands everything (open transcript, un-clipped
+   scroll boxes, plain-text coaching notes) so nothing is cut off.
+   ===================================================================== */
+function applyExportMode(on) {
+    const area = $('reportArea');
+    if (on) {
+        $('coachingNotesClone').textContent = $('coachingNotes').value;
+        area.querySelectorAll('details').forEach((d) => {
+            d.setAttribute('data-prev-open', d.open ? '1' : '0');
+            d.open = true;
+        });
+        area.classList.add('export-mode');
+    } else {
+        area.classList.remove('export-mode');
+        area.querySelectorAll('details[data-prev-open]').forEach((d) => {
+            d.open = d.getAttribute('data-prev-open') === '1';
+            d.removeAttribute('data-prev-open');
+        });
+    }
+}
+
+function exportTitle() {
+    const agent = $('agentName').value.trim() || 'Agent';
+    const date = $('callDate').value || '';
+    return '<h2 style="font-family:\'IBM Plex Sans\',sans-serif;color:#1a2a4a;margin:0 0 14px;font-size:18px;">' +
+        'CSR Call Evaluation — ' + esc(agent) + (date ? ' — ' + esc(date) : '') + '</h2>';
+}
+
+function buildExportHTML() {
+    applyExportMode(true);
+    try {
+        const clone = $('reportArea').cloneNode(true); // keeps export-mode: un-clips boxes in the pasted doc
+        const css = (document.querySelector('style') && document.querySelector('style').textContent) || '';
+        return '<div>' + exportTitle() + '<style>' + css + '</style>' + clone.outerHTML + '</div>';
+    } finally {
+        applyExportMode(false);
+    }
+}
+
+async function copyRichText(html, text) {
+    // Preferred: rich HTML + plain text, keeps formatting in Word / Docs / Gmail.
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        try {
+            await navigator.clipboard.write([new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([text], { type: 'text/plain' })
+            })]);
+            return true;
+        } catch (e) { /* blocked (permissions or non-secure context) — try the fallback */ }
+    }
+    // Fallback: selection + execCommand, copies rich text too.
+    try {
+        const holder = document.createElement('div');
+        holder.contentEditable = 'true';
+        holder.innerHTML = html;
+        holder.style.cssText = 'position:fixed;left:-9999px;top:0;white-space:pre-wrap;';
+        document.body.appendChild(holder);
+        const range = document.createRange();
+        range.selectNodeContents(holder);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        sel.removeAllRanges();
+        holder.remove();
+        return ok;
+    } catch (e) { return false; }
+}
+
+/* =====================================================================
+   Download PDF — one continuous document, nothing clipped or dropped
+   ===================================================================== */
+$('pdfBtn').addEventListener('click', async () => {
+    if (!analysisResults) return;
+    const el = $('reportArea');
+    const btn = $('pdfBtn');
+    const label = btn.textContent;
+
+    if (typeof html2pdf === 'undefined') { window.print(); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Generating…';
+    applyExportMode(true);
+
+    // Large scale for short reports; back off for very tall ones so the
+    // canvas never exceeds browser limits (which silently truncates pages).
+    const scale = el.scrollHeight > 12000 ? 1 : (el.scrollHeight > 7000 ? 1.5 : 2);
+
+    try {
+        await html2pdf().set({
+            margin: [8, 8, 12, 8],
+            filename: 'call-evaluation-' + ($('agentName').value.trim().replace(/\s+/g, '-').toLowerCase() || 'report') + '.pdf',
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: scale, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, windowWidth: el.scrollWidth },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            // 'css' + 'legacy' breaks between rows/sections instead of trying to
+            // fit whole sections on one page (which dropped content before).
+            pagebreak: { mode: ['css', 'legacy'], before: '.qa-section', after: '.coach-card' }
+        }).from(el).save();
+    } catch (e) {
+        window.print(); // last-resort: browser print-to-PDF
+    } finally {
+        applyExportMode(false);
+        btn.disabled = false;
+        btn.textContent = label;
+    }
+});
+
+/* =====================================================================
+   Copy the full Step 3 — Evaluation & Coaching output
+   ===================================================================== */
+$('copyBtn').addEventListener('click', async () => {
+    if (!analysisResults) return;
+    const btn = $('copyBtn');
+    const label = btn.textContent;
+
+    const html = buildExportHTML();
+
+    applyExportMode(true);
+    const title = 'CSR Call Evaluation — ' + ($('agentName').value.trim() || 'Agent') +
+        ($('callDate').value ? ' — ' + $('callDate').value : '') + '\n\n';
+    const text = title + $('reportArea').innerText.trim();
+    applyExportMode(false);
+
+    btn.disabled = true;
+    btn.textContent = 'Copying…';
+    const ok = await copyRichText(html, text);
+    btn.disabled = false;
+    btn.textContent = label;
+
+    if (ok) showSuccess('✓ Evaluation & Coaching copied — paste it into Word, Gmail, or Google Docs.');
+    else showError('Copy was blocked by the browser. Select the report text manually (Ctrl+C) or use Download Report (PDF).');
+});
+
+/* Print fallback (Ctrl+P / print dialog): expand collapsed panels first. */
+window.addEventListener('beforeprint', () => applyExportMode(true));
+window.addEventListener('afterprint', () => applyExportMode(false));
+
+/* =====================================================================
+   Init
+   ===================================================================== */
+refreshKeyStatus();
+setStep(1);
+</script>
 </body>
 </html>

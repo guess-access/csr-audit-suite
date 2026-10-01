@@ -166,7 +166,7 @@ Q: Can it work on mobile?
 A: Yes! Fully responsive on phones, tablets, desktops.
 
 Q: What if audio upload doesn't work?
-A: Ensure file is MP3 (not WAV), under 3MB, try Chrome browser.
+A: Ensure file is MP3 (not WAV), under 10MB, try Chrome browser.
 
 Q: Can agents log in separately?
 A: Default is open access. You can add authentication if needed.

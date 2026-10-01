@@ -260,7 +260,7 @@ A: MP3 files work best. WAV and other formats may work depending on browser supp
 ## 📞 Support
 
 - **Browser Issues?** Try Chrome, Edge, or Firefox (most reliable)
-- **Upload Problems?** Ensure file is MP3 and under 3MB
+- **Upload Problems?** Ensure file is MP3 and under 10MB (auto-compressed above 4MB)
 - **PDF Export Issues?** Try different browser or disable ad-blockers
 - **API Issues?** Check internet connection and try again
 

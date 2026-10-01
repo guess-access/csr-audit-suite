@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSR Fundamentals - Module 05 | Call Quality Audit Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #1e3a8a;
+            --secondary-color: #0ea5e9;
+            --accent-color: #f97316;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --neutral-50: #f9fafb;
+            --neutral-100: #f3f4f6;
+            --neutral-200: #e5e7eb;
+            --neutral-300: #d1d5db;
+            --neutral-400: #9ca3af;
+            --neutral-500: #6b7280;
+            --neutral-600: #4b5563;
+            --neutral-700: #374151;
+            --neutral-800: #1f2937;
+            --neutral-900: #111827;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--neutral-50);
+            color: var(--neutral-800);
+            line-height: 1.6;
+        }
+
+        nav {
+            background-color: white;
+            border-bottom: 1px solid var(--neutral-200);
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        nav .logo {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--primary-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        nav .logo span {
+            font-size: 24px;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: var(--neutral-600);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--primary-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .header .container {
+            max-width: 800px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+            margin-bottom: 0;
+        }
+
+        main {
+            padding: 3rem 2rem;
+        }
+
+        .quick-start {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.05) 0%, rgba(14, 165, 233, 0.05) 100%);
+            border: 1px solid var(--secondary-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 3rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .quick-start h3 {
+            color: var(--primary-color);
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .quick-start ol {
+            margin-left: 20px;
+            color: var(--neutral-700);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .quick-start li {
+            margin-bottom: 10px;
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto 4rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 28px;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--neutral-200);
+            padding: 28px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .tool-card.secondary::before {
+            background: linear-gradient(90deg, var(--success-color), var(--secondary-color));
+        }
+
+        .tool-card.tertiary::before {
+            background: linear-gradient(90deg, var(--accent-color), var(--warning-color));
+        }
+
+        .tool-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--secondary-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .tool-card .featured-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .tool-icon {
+            font-size: 42px;
+            margin-bottom: 12px;
+        }
+
+        .tool-subtitle {
+            font-size: 11px;
+            color: var(--secondary-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .tool-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--neutral-900);
+            margin-bottom: 12px;
+        }
+
+        .tool-description {
+            font-size: 14px;
+            color: var(--neutral-600);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            flex-grow: 1;
+        }
+
+        .tool-features {
+            font-size: 13px;
+            color: var(--neutral-600);
+            margin-bottom: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--neutral-200);
+        }
+
+        .tool-features ul {
+            list-style: none;
+        }
+
+        .tool-features li {
+            padding: 4px 0;
+        }
+
+        .tool-features li:before {
+            content: '✓ ';
+            color: var(--success-color);
+            font-weight: 700;
+            margin-right: 6px;
+        }
+
+        .tool-link {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            cursor: pointer;
+            text-align: center;
+            width: 100%;
+        }
+
+        .tool-link:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
+        }
+
+        .tool-card.secondary .tool-link {
+            background: linear-gradient(135deg, var(--success-color), var(--secondary-color));
+        }
+
+        .tool-card.secondary .tool-link:hover {
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .tool-card.tertiary .tool-link {
+            background: linear-gradient(135deg, var(--accent-color), var(--warning-color));
+            color: white;
+        }
+
+        .tool-card.tertiary .tool-link:hover {
+            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
+        }
+
+        .info-section {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--neutral-200);
+            padding: 28px;
+            margin-bottom: 28px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .info-section h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--neutral-900);
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--neutral-200);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            padding: 16px;
+            background: var(--neutral-50);
+            border-radius: 6px;
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .info-item h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--neutral-900);
+            margin-bottom: 8px;
+        }
+
+        .info-item p {
+            font-size: 13px;
+            color: var(--neutral-600);
+            line-height: 1.5;
+        }
+
+        .support-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 32px;
+            text-align: center;
+            margin: 3rem auto;
+            max-width: 1200px;
+        }
+
+        .support-section h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            border: none;
+            color: white;
+        }
+
+        .support-section p {
+            font-size: 14px;
+            opacity: 0.95;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .support-section a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            transition: border-color 0.2s;
+        }
+
+        .support-section a:hover {
+            border-bottom-color: white;
+        }
+
+        footer {
+            background: white;
+            border-top: 1px solid var(--neutral-200);
+            padding: 2rem;
+            text-align: center;
+            color: var(--neutral-600);
+            font-size: 12px;
+        }
+
+        footer a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            margin: 0 8px;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            nav ul {
+                gap: 1rem;
+            }
+
+            nav a {
+                font-size: 13px;
+            }
+
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .header p {
+                font-size: 14px;
+            }
+
+            main {
+                padding: 2rem 1rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <a href="./" class="logo">
+                <span>📚</span>
+                DealerFocus Academy
+            </a>
+            <ul>
+                <li><a href="./">Home</a></li>
+                <li><a href="#tools">Tools</a></li>
+                <li><a href="#about">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="header">
+        <div class="container">
+            <div class="header-badge">MODULE 05 — CALL QUALITY AUDIT</div>
+            <h1>CSR Fundamentals</h1>
+            <p>Professional call evaluation, automated analysis, and coaching development</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="quick-start">
+            <h3>🚀 Quick Start Guide</h3>
+            <ol>
+                <li><strong>Start with Audio Analyzer</strong> — Upload an MP3 call recording for instant AI-powered scoring</li>
+                <li><strong>Review Results</strong> — Get detailed feedback on all CSR Fundamentals metrics (2-5 minutes)</li>
+                <li><strong>Schedule Coaching</strong> — Use the Coaching Template for one-on-one development conversations</li>
+                <li><strong>Track Progress</strong> — Export PDFs and monitor improvements over time</li>
+            </ol>
+        </div>
+
+        <div class="dashboard">
+            <div class="dashboard-grid" id="tools">
+                <div class="tool-card primary">
+                    <div class="featured-badge">⭐ RECOMMENDED</div>
+                    <div class="tool-icon">🎵</div>
+                    <div class="tool-subtitle">Automated Analysis</div>
+                    <h3 class="tool-title">Audio Call Analyzer</h3>
+                    <p class="tool-description">Upload MP3 recordings and get instant AI-powered analysis with automatic scoring against all CSR Fundamentals metrics.</p>
+                    <div class="tool-features">
+                        <ul>
+                            <li>Automatic call transcription</li>
+                            <li>18-metric evaluation</li>
+                            <li>Instant scoring (0-100)</li>
+                            <li>Coaching recommendations</li>
+                            <li>PDF export</li>
+                        </ul>
+                    </div>
+                    <a href="audio-analyzer.html" class="tool-link">Launch Tool →</a>
+                </div>
+
+                <div class="tool-card secondary">
+                    <div class="tool-icon">📋</div>
+                    <div class="tool-subtitle">Manual Review</div>
+                    <h3 class="tool-title">Audit Form</h3>
+                    <p class="tool-description">Manually review and score calls with an interactive form that guides you through each metric with real-time calculations.</p>
+                    <div class="tool-features">
+                        <ul>
+                            <li>18-metric form</li>
+                            <li>Real-time scoring</li>
+                            <li>Detailed notes</li>
+                            <li>Call documentation</li>
+                            <li>PDF export</li>
+                        </ul>
+                    </div>
+                    <a href="audit-form.html" class="tool-link">Launch Tool →</a>
+                </div>
+
+                <div class="tool-card tertiary">
+                    <div class="tool-icon">💬</div>
+                    <div class="tool-subtitle">Coaching & Development</div>
+                    <h3 class="tool-title">Coaching Template</h3>
+                    <p class="tool-description">Conduct structured one-on-one coaching sessions with organized feedback, ratings, and actionable development plans.</p>
+                    <div class="tool-features">
+                        <ul>
+                            <li>Strengths & opportunities</li>
+                            <li>4-category ratings</li>
+                            <li>Action planning</li>
+                            <li>Follow-up tracking</li>
+                            <li>PDF export</li>
+                        </ul>
+                    </div>
+                    <a href="coaching-template.html" class="tool-link">Launch Tool →</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section" id="about">
+            <h2>📊 Evaluation Metrics</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>Section 1: Call Flow (20 pts)</h3>
+                    <p>Proper dealership branding announcement and agent self-introduction</p>
+                </div>
+                <div class="info-item">
+                    <h3>Section 2: Body of Call (24 pts)</h3>
+                    <p>Reason for transfer, customer name collection, department introduction</p>
+                </div>
+                <div class="info-item">
+                    <h3>Section 3: System Process (21 pts)</h3>
+                    <p>Warm transfer protocol (3-ring hold), data entry accuracy, correct disposition selection</p>
+                </div>
+                <div class="info-item">
+                    <h3>Section 4: Management Skills (35 pts)</h3>
+                    <p>Communication clarity, empathy, active listening, tone, efficiency, and confidence</p>
+                </div>
+                <div class="info-item">
+                    <h3>Section 5: Zero Tolerance (Auto-Fail)</h3>
+                    <p>No rudeness/profanity, no policy violations, no intentional call avoidance</p>
+                </div>
+                <div class="info-item">
+                    <h3>Total Score: 0-100</h3>
+                    <p>85+ Passing (QA form standard) | 70-84 Coaching Required | Below 70 Needs Work | Auto-Fail = 0% + PIP review</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2>🔄 Recommended Workflow</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>Step 1: Analyze</h3>
+                    <p>Upload call to Audio Analyzer or use Audit Form for manual review</p>
+                </div>
+                <div class="info-item">
+                    <h3>Step 2: Review Results</h3>
+                    <p>Review scores, strengths, opportunities, and recommended actions</p>
+                </div>
+                <div class="info-item">
+                    <h3>Step 3: Schedule Coaching</h3>
+                    <p>Plan one-on-one using Coaching Template with analysis results</p>
+                </div>
+                <div class="info-item">
+                    <h3>Step 4: Document</h3>
+                    <p>Export PDFs to personnel files and tracking systems</p>
+                </div>
+                <div class="info-item">
+                    <h3>Step 5: Follow-Up</h3>
+                    <p>Monitor progress in 30 days using updated metrics</p>
+                </div>
+                <div class="info-item">
+                    <h3>Step 6: Track Trends</h3>
+                    <p>Analyze scores over time to identify ongoing training needs</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="support-section">
+            <h2>How It Works</h2>
+            <p>This comprehensive suite provides three integrated tools for consistent, objective call evaluation and agent development. Whether using automated AI analysis or manual review, you get detailed feedback, coaching guidance, and documentation for training compliance.</p>
+            <p style="font-size: 13px; margin-top: 12px;">
+                Built for DealerFocus Training Hub | <a href="#">Privacy Policy</a> | <a href="#">Terms</a>
+            </p>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 DealerFocus Training Academy | CSR Fundamentals Module 05 | All rights reserved</p>
+        <p style="margin-top: 8px;">Version 1.0 | Deployed to Netlify</p>
+    </footer>
+</body>
+</html>

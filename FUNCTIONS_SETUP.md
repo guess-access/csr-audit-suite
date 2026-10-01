@@ -94,17 +94,18 @@ using a `.env` file (or `netlify env:import`) for the two keys above.
 | `Step 2 (scoring) failed: ... Gemini: / Groq: / Claude: ... invalid api key` | That provider rejected the key | Regenerate the key at the provider's console, replace the matching variable in Netlify, redeploy |
 | `..._API_KEY is not set` | The env var is missing | Add it in Netlify → Site configuration → Environment variables, then redeploy (env changes only apply to new deploys) |
 | `Unexpected token '<'` or HTTP 404/502 on `/api/*` | Site was deployed by drag-and-drop, so the functions weren't bundled | Redeploy from the GitHub repo (Git route above) or with the Netlify CLI |
-| `Audio file is too large` | Clip exceeds 3 MB | Trim the recording or lower the MP3 bitrate |
+| `Audio file is too large` | Original clip over 10 MB, or the compressed upload is still over 4 MB | Trim the recording (the page re-encodes anything over 4 MB automatically) |
 
 ## Current limits, and how to raise them later
 
-- **Audio length:** capped at ~3MB (roughly a 3-minute MP3) in both the
-  frontend and `transcribe.js`. Netlify's buffered request limit is 6MB, but
-  base64-encoded payloads add ~30% overhead, giving an effective binary
-  limit of ~4.5MB — 3MB stays safely inside it. For longer calls you'd need
-  either: (a) compress/trim the audio before upload, or (b) move to chunked
-  upload + a background function (available on paid Netlify plans, with a
-  much longer execution limit).
+- **Audio length:** the page accepts original files up to **10MB**. Anything
+  over 4MB is re-encoded in the browser to a 16 kHz mono MP3 (`compressAudio`
+  in `audio-analyzer.html`, using lamejs) before upload, so the request fits
+  Netlify's 6MB buffered limit — base64 adds ~30% on top of the raw bytes,
+  which is why `transcribe.js` caps at 4MB. Transcription only needs speech,
+  so the re-encode does not affect accuracy. Beyond 10MB you'd need either
+  (a) chunked upload + Blob storage, or (b) moving transcription to a
+  background function (paid Netlify plans, much longer execution limit).
 - **One call at a time:** there's no queue — each upload is transcribed and
   scored on the spot. Fine for a manager reviewing calls one by one; not
   built for bulk/batch processing.
