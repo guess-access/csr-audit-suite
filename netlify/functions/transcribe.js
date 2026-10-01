@@ -8,13 +8,11 @@
 // Required environment variable (set in Netlify: Site settings > Environment
 // variables): DEEPGRAM_API_KEY
 
-const MAX_AUDIO_BYTES = 3 * 1024 * 1024; // ~3MB raw audio (~4MB once base64-encoded)
-// Netlify's buffered request limit is 6MB, but base64-encoded payloads add
-// ~30% overhead, giving an effective binary limit of ~4.5MB (Netlify docs).
-// 3MB keeps the JSON body safely inside that under every encoding path.
-// At typical MP3 bitrates (128kbps) 3MB is roughly a 3-minute call.
-// For longer calls, see the note in DEPLOYMENT_GUIDE.md about splitting audio
-// or moving to a background function on a paid Netlify plan.
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024; // raw audio the function accepts (~5.5MB once base64-encoded)
+// Netlify's buffered request limit is 6MB. The browser re-encodes anything over
+// 4MB to a 16 kHz mono MP3 before uploading (compressAudio in audio-analyzer.html),
+// so every request body stays inside that cap under any encoding path.
+// The original upload limit on the page is 10MB; compression happens client-side.
 
 exports.handler = async (event) => {
   const headers = {
@@ -65,7 +63,7 @@ exports.handler = async (event) => {
       statusCode: 413,
       headers,
       body: JSON.stringify({
-        error: `Audio file is too large for this function (${(audioBuffer.length / 1024 / 1024).toFixed(1)}MB). Please use a clip under ${(MAX_AUDIO_BYTES / 1024 / 1024).toFixed(0)}MB (roughly a 3-minute call at typical MP3 quality).`,
+        error: `Audio file is too large for this function (${(audioBuffer.length / 1024 / 1024).toFixed(1)}MB). Files up to 10MB are accepted on the page and compressed automatically before upload — anything still over ${(MAX_AUDIO_BYTES / 1024 / 1024).toFixed(0)}MB needs a shorter clip.`,
       }),
     };
   }
