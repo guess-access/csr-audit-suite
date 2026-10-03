@@ -207,9 +207,9 @@ Edit the navbar in `index.html` to link to:
   deploys**, which never build functions (see DEPLOYMENT_GUIDE Options 2/3).
   Redeploy from a Git repo or with the Netlify CLI.
 - Otherwise, most often this means a key isn't set in Netlify yet —
-  `DEEPGRAM_API_KEY` for transcription, plus one free scoring key
-  (`GEMINI_API_KEY` or `GROQ_API_KEY`; `ANTHROPIC_API_KEY` also works) —
-  see `FUNCTIONS_SETUP.md`
+  one free `GROQ_API_KEY` covers **both** transcription and scoring;
+  `GEMINI_API_KEY`/`ANTHROPIC_API_KEY` work for scoring and
+  `DEEPGRAM_API_KEY` as a transcription fallback — see `FUNCTIONS_SETUP.md`
 - Check internet connection
 - Try again in 30 seconds
 - Check your AI provider's API status (Gemini: status.cloud.google.com,

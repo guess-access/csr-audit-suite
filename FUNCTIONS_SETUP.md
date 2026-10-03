@@ -52,8 +52,9 @@ variable**, and add:
 
 | Key | Value |
 |---|---|
-| `DEEPGRAM_API_KEY` | your Deepgram key |
-| `GEMINI_API_KEY` | your Gemini key **(or** `GROQ_API_KEY` / `ANTHROPIC_API_KEY` — one scoring key is enough **)** |
+| `GROQ_API_KEY` | your Groq key (https://console.groq.com/keys) — **one free key does both**: transcription (`whisper-large-v3-turbo`) and scoring |
+| `GEMINI_API_KEY` | optional alternative scoring key **(or** `ANTHROPIC_API_KEY` — only needed if you don't use Groq **)** |
+| `DEEPGRAM_API_KEY` | optional fallback transcription key — only used when `GROQ_API_KEY` is absent |
 
 Tip: the *Import from .env* box needs `KEY=VALUE` with an equals sign, one
 pair per line — spaces won't parse.
@@ -89,7 +90,7 @@ using a `.env` file (or `netlify env:import`) for the two keys above.
 
 | Error shown by the analyzer | What it means | Fix |
 |---|---|---|
-| `Step 1 (transcription / Deepgram) failed: Invalid credentials.` | Deepgram rejected the key — it's mistyped, has a stray space/newline, was revoked, or belongs to another account | console.deepgram.com → **Settings → API Keys** → create a fresh key, replace `DEEPGRAM_API_KEY` in Netlify, redeploy |
+| `Step 1 (transcription) failed: ... invalid api key` | Groq (or Deepgram, if that's the configured provider) rejected the key — it's mistyped, has a stray space/newline, was revoked, or belongs to another account | console.groq.com → **API Keys** → create a fresh key, replace `GROQ_API_KEY` in Netlify, redeploy |
 | `Step 2 (scoring) failed: No scoring AI key is configured...` | None of the scoring keys are set | Add `GEMINI_API_KEY` (free) or `GROQ_API_KEY` (free) in Netlify → Environment variables, redeploy |
 | `Step 2 (scoring) failed: ... Gemini: / Groq: / Claude: ... invalid api key` | That provider rejected the key | Regenerate the key at the provider's console, replace the matching variable in Netlify, redeploy |
 | `..._API_KEY is not set` | The env var is missing | Add it in Netlify → Site configuration → Environment variables, then redeploy (env changes only apply to new deploys) |

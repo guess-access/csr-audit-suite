@@ -38,9 +38,9 @@ STEP-BY-STEP DEPLOYMENT (EASIEST METHOD)
    Drag-and-drop publishes the HTML only; it does NOT bundle the
    netlify/functions folder, so the Audio Analyzer will not work on a
    drop deploy. To enable it, deploy from your GitHub repo (or with the
-   Netlify CLI) and add the two environment variables from
-   FUNCTIONS_SETUP.md (DEEPGRAM_API_KEY plus GEMINI_API_KEY or
-   GROQ_API_KEY - both free, no credit card needed).
+   Netlify CLI) and add the environment variable from
+   FUNCTIONS_SETUP.md (GROQ_API_KEY - one free key covers
+   transcription and scoring, no credit card needed).
    The Audit Form and Coaching Template work fine either way.
 
 4. LIVE!
