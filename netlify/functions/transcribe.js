@@ -1,12 +1,14 @@
 // netlify/functions/transcribe.js
 //
-// Takes a base64-encoded audio file from the browser, sends it to Deepgram's
-// speech-to-text API (server-side, using a secret API key), and returns the
-// plain-text transcript. Claude's Messages API does not accept raw audio as
-// input, so this step has to happen before anything gets to Claude.
+// Takes a base64-encoded audio file from the browser, converts it to text
+// (server-side, using a secret API key), and returns the plain-text transcript.
+// The scoring step (analyze.js) cannot accept raw audio, so transcription has
+// to happen before anything else.
 //
-// Required environment variable (set in Netlify: Site settings > Environment
-// variables): DEEPGRAM_API_KEY
+// Supported keys (set in Netlify: Site settings > Environment variables):
+//   GROQ_API_KEY      (free tier — recommended; uses whisper-large-v3-turbo)
+//   DEEPGRAM_API_KEY  (fallback; uses nova-2)
+// GROQ_API_KEY is preferred when both are present.
 
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024; // raw audio the function accepts (~5.5MB once base64-encoded)
 // Netlify's buffered request limit is 6MB. The browser re-encodes anything over
@@ -28,13 +30,14 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const apiKey = process.env.DEEPGRAM_API_KEY;
-  if (!apiKey) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const deepgramKey = process.env.DEEPGRAM_API_KEY;
+  if (!groqKey && !deepgramKey) {
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'DEEPGRAM_API_KEY is not set. Add it in Netlify: Site settings > Environment variables, then redeploy.',
+        error: 'No transcription key is configured. FREE option: GROQ_API_KEY (https://console.groq.com/keys). Also supported: DEEPGRAM_API_KEY. Add one in Netlify: Site settings > Environment variables, then redeploy.',
       }),
     };
   }
@@ -68,20 +71,54 @@ exports.handler = async (event) => {
     };
   }
 
+  const contentType = mimeType || 'audio/mpeg';
+
   try {
+    if (groqKey) {
+      // ---- Groq: whisper-large-v3-turbo (free tier) ----
+      const form = new FormData();
+      form.append('file', new Blob([audioBuffer], { type: contentType }), 'call.mp3');
+      form.append('model', 'whisper-large-v3-turbo');
+      form.append('response_format', 'json');
+
+      const gResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqKey}` },
+        body: form,
+      });
+      const gData = await gResponse.json().catch(() => ({}));
+
+      if (!gResponse.ok) {
+        const message = gData?.error?.message || 'Groq transcription failed';
+        return { statusCode: gResponse.status, headers, body: JSON.stringify({ error: message }) };
+      }
+
+      const transcript = (gData?.text || '').trim();
+      if (!transcript) {
+        return {
+          statusCode: 422,
+          headers,
+          body: JSON.stringify({ error: 'No speech was detected in this file. Check that it\'s a valid, non-silent audio recording.' }),
+        };
+      }
+
+      return { statusCode: 200, headers, body: JSON.stringify({ transcript }) };
+    }
+
+    // ---- Deepgram: nova-2 (fallback) ----
     const dgResponse = await fetch(
       'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true',
       {
         method: 'POST',
         headers: {
-          Authorization: `Token ${apiKey}`,
-          'Content-Type': mimeType || 'audio/mpeg',
+          Authorization: `Token ${deepgramKey}`,
+          'Content-Type': contentType,
         },
         body: audioBuffer,
       }
     );
 
-    const dgData = await dgResponse.json();
+    const dgData = await dgResponse.json().catch(() => ({}));
 
     if (!dgResponse.ok) {
       const message = dgData?.err_msg || dgData?.error || 'Deepgram transcription failed';
