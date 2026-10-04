@@ -960,7 +960,7 @@ const CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODELS_URL = 'https://api.groq.com/openai/v1/models';
 // Preference order. GPT-OSS models are on the free/developer tier and support
 // structured JSON output; the Llama IDs are kept last for enterprise accounts.
-const CHAT_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const CHAT_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
 const CHAT_MODEL_RE = /gpt-oss-120b|gpt-oss-20b|llama-3\.3-70b|llama-3\.1-8b|qwen3\.8-27b/i;
 const CHAT_MODEL_EXCLUDE_RE = /safeguard|prompt-guard|whisper|tts|orpheus|embed/i;
 const KEY_STORAGE = 'groq_api_key';
