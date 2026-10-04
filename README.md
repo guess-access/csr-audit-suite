@@ -269,3 +269,13 @@ A: MP3 files work best. WAV and other formats may work depending on browser supp
 **Created for:** Clyde @ DealerFocus Training Hub
 **Date:** September 2026
 **Tools Suite:** CSR Fundamentals Audit & Coaching System
+
+
+---
+
+## Live deployment (Cloudflare Pages)
+
+- Production site: https://csr-audit-suite.pages.dev (CSR Call Evaluator is the homepage)
+- Source: this repository, branch App (pushes auto-deploy)
+- Environment: Cloudflare Pages -> Settings -> Variables and secrets -> GROQ_API_KEY (powers /api/transcribe + /api/analyze); redeploy after changing it
+- Mirror: https://df-automated-quality-auditor.netlify.app (same repo; set the same key in Netlify site settings to enable its API)
