@@ -1,9 +1,9 @@
 // netlify/functions/transcribe.js
 //
-// Takes a base64-encoded audio file from the browser, converts it to text
-// (server-side, using a secret API key), and returns the plain-text transcript.
-// The scoring step (analyze.js) cannot accept raw audio, so transcription has
-// to happen before anything else.
+// Takes the call recording from the browser (raw binary body; the legacy
+// base64 JSON shape still works too), converts it to text server-side using a
+// secret API key, and returns the plain-text transcript. The scoring step
+// (analyze.js) cannot accept raw audio, so transcription has to happen first.
 //
 // Supported keys (set in Netlify: Site settings > Environment variables):
 //   GROQ_API_KEY      (free tier — recommended; uses whisper-large-v3-turbo)
@@ -42,23 +42,43 @@ exports.handler = async (event) => {
     };
   }
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || '{}');
-  } catch (err) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON body' }) };
-  }
-
-  const { audio, mimeType } = payload;
-  if (!audio) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing "audio" (base64) in request body' }) };
-  }
+  // Two accepted body shapes:
+  //   - raw binary audio (Content-Type: audio/... — what audio-analyzer.html
+  //     sends; no base64, so a 4MB upload stays a 4MB request)
+  //   - legacy JSON { audio: '<base64>', mimeType }
+  const contentType = String(
+    (event.headers && (event.headers['content-type'] || event.headers['Content-Type'])) || ''
+  ).toLowerCase();
 
   let audioBuffer;
-  try {
-    audioBuffer = Buffer.from(audio, 'base64');
-  } catch (err) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Could not decode base64 audio' }) };
+  let mimeType;
+
+  if (contentType.includes('application/json')) {
+    let payload;
+    try {
+      payload = JSON.parse(event.body || '{}');
+    } catch (err) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON body' }) };
+    }
+    if (!payload || !payload.audio) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing "audio" (base64) in request body' }) };
+    }
+    try {
+      audioBuffer = Buffer.from(payload.audio, 'base64');
+    } catch (err) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Could not decode base64 audio' }) };
+    }
+    mimeType = payload.mimeType || 'audio/mpeg';
+  } else {
+    // Netlify base64-encodes binary request bodies and flags them here.
+    audioBuffer = event.isBase64Encoded
+      ? Buffer.from(event.body || '', 'base64')
+      : Buffer.from(event.body || '', 'utf8');
+    mimeType = contentType || 'audio/mpeg';
+  }
+
+  if (!audioBuffer.length) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Empty audio body' }) };
   }
 
   if (audioBuffer.length > MAX_AUDIO_BYTES) {
