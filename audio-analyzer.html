@@ -59,6 +59,7 @@
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .home-link {
             color: white;
             font-size: 12px;
@@ -704,7 +705,10 @@
         <div class="header-title">CSR Call Evaluator</div>
         <div class="header-sub">Upload · Transcribe · Score against QA Form</div>
     </div>
-    <a class="home-link" href="index.html">← Suite Home</a>
+    <div class="header-actions">
+        <a class="home-link" href="how-to-use.html">📖 How to Use</a>
+        <a class="home-link" href="index.html">← Suite Home</a>
+    </div>
 </div>
 
 <div class="main">
@@ -1072,9 +1076,14 @@
         box.classList.toggle('show');
         if (box.classList.contains('show')) {
             dropzone.style.display = 'none';
+            $('infoSection').style.display = 'block';
+            setStep(2);
+            if (!$('callDate').value) $('callDate').valueAsDate = new Date();
             $('manualTranscript').focus();
         } else if (!audioFile) {
             dropzone.style.display = 'block';
+            $('infoSection').style.display = 'none';
+            setStep(1);
         }
     });
 

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Use the Auditor — CSR Call Evaluator Suite</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1a2a4a;
+            --navy-light: #243355;
+            --red: #c0392b;
+            --red-light: #e74c3c;
+            --green: #1e7e4a;
+            --green-light: #27ae60;
+            --gold: #d4a017;
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --border: #dde1e9;
+            --text: #1c2333;
+            --muted: #5a6478;
+            --radius: 10px;
+            --shadow: 0 2px 12px rgba(26, 42, 74, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* HEADER — same as the app */
+        .header {
+            background: var(--navy);
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid var(--red);
+            gap: 16px;
+        }
+        .header-title { color: white; font-size: 15px; font-weight: 600; }
+        .header-sub {
+            color: white;
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.7;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .header-actions { display: flex; gap: 8px; }
+        .home-link {
+            color: white;
+            font-size: 12px;
+            text-decoration: none;
+            opacity: 0.8;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            padding: 7px 14px;
+            border-radius: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .home-link:hover { background: rgba(255, 255, 255, 0.12); opacity: 1; }
+
+        .main { max-width: 940px; margin: 0 auto; padding: 28px 20px 70px; }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 22px 24px;
+            margin-bottom: 16px;
+        }
+        .card-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .intro { line-height: 1.6; font-size: 14px; color: var(--text); }
+        .intro strong { color: var(--navy); }
+
+        /* Quick-nav chips */
+        .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .toc a {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--navy);
+            background: #eef2f9;
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 999px;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .toc a:hover { background: var(--navy); color: white; }
+
+        /* Step cards */
+        .step-card { display: flex; gap: 18px; }
+        .step-num {
+            flex: 0 0 36px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--navy);
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+        }
+        .step-num.setup { background: var(--gold); }
+        .step-body { flex: 1; min-width: 0; }
+        .step-body h2 { font-size: 17px; color: var(--navy); margin-bottom: 8px; }
+        .step-body p, .step-body li { font-size: 13.5px; line-height: 1.65; color: var(--text); }
+        .step-body p + p { margin-top: 8px; }
+        .step-body ul, .step-body ol { margin: 8px 0 0 20px; }
+        .step-body li + li { margin-top: 5px; }
+        .step-body h4 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--muted);
+            margin: 14px 0 6px;
+        }
+
+        /* Inline UI-label pill — exact button/field names from the app */
+        code {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            background: #eef2f9;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 1px 7px;
+            color: var(--navy);
+            white-space: nowrap;
+        }
+
+        /* Callouts */
+        .tip {
+            margin-top: 12px;
+            background: var(--pass-bg, #eafaf1);
+            border: 1px solid #bfe8d0;
+            border-left: 4px solid var(--green);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .warn {
+            margin-top: 12px;
+            background: #fdf6e3;
+            border: 1px solid #f0dfae;
+            border-left: 4px solid var(--gold);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .tip::before { content: "💡 "; }
+        .warn::before { content: "⚠️ "; }
+
+        /* Sub-blocks inside a step (manual vs dispute) */
+        .sub {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-top: 12px;
+            background: #fbfcfe;
+        }
+        .sub h3 { font-size: 14px; color: var(--navy); margin-bottom: 6px; }
+        .sub .badge {
+            display: inline-block;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: white;
+            background: var(--navy);
+            border-radius: 4px;
+            padding: 2px 7px;
+            margin-right: 7px;
+            vertical-align: 2px;
+        }
+        .sub .badge.ai { background: var(--gold); }
+
+        /* FAQ */
+        .faq-item { border-top: 1px solid var(--border); padding: 12px 0; }
+        .faq-item:first-of-type { border-top: 0; }
+        .faq-q { font-size: 13.5px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+        .faq-a { font-size: 13px; line-height: 1.6; color: var(--text); }
+
+        /* Suite links */
+        .suite-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .suite-link {
+            display: block;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-decoration: none;
+            color: var(--text);
+            background: #fbfcfe;
+            transition: all 0.15s;
+        }
+        .suite-link:hover { border-color: var(--navy); background: #eef2f9; }
+        .suite-link .s-name { font-size: 13.5px; font-weight: 600; color: var(--navy); }
+        .suite-link .s-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+
+        .ai-note {
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 18px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 640px) {
+            .suite-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; align-items: flex-start; }
+            code { white-space: normal; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="header-title">How to Use the Auditor</div>
+        <div class="header-sub">Step-by-step guide · CSR Call Evaluator Suite</div>
+    </div>
+    <div class="header-actions">
+        <a class="home-link" href="index.html">🎙️ Open the Evaluator</a>
+        <a class="home-link" href="audio-analyzer.html">🎧 Audio Analyzer</a>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- INTRO -->
+    <div class="card">
+        <div class="card-label">Overview</div>
+        <p class="intro">This guide takes <strong>one call</strong> all the way through the Auditor: load it, score it, fix any score you disagree with, and export the finished report. Every step below names the exact buttons you will see on screen. The flow is the same on both the <strong>CSR Call Evaluator</strong> (home page) and the <strong>Audio Analyzer</strong> — differences are called out where they matter. Total time per call: about <strong>3–5 minutes</strong> plus analysis time.</p>
+        <div class="toc">
+            <a href="#setup">Setup · API key</a>
+            <a href="#step1">1 · Load the call</a>
+            <a href="#step2">2 · Call details</a>
+            <a href="#step3">3 · Analyze</a>
+            <a href="#step4">4 · Read the report</a>
+            <a href="#step5">5 · Fix a score</a>
+            <a href="#step6">6 · Export</a>
+            <a href="#faq">FAQ</a>
+            <a href="#suite">The suite</a>
+        </div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="card step-card" id="setup">
+        <div class="step-num setup">★</div>
+        <div class="step-body">
+            <h2>Setup — save your API key <span style="font-size:12px;color:var(--muted);font-weight:400;">(one time, Evaluator only)</span></h2>
+            <p>The Evaluator needs a free <strong>Groq API key</strong> to transcribe and score calls. You paste it once:</p>
+            <ol>
+                <li>Click <code>⚙ API Key</code> in the top-right corner of the page.</li>
+                <li>In the <code>🔑 Groq API Key</code> window, paste your key (free at <strong>console.groq.com/keys</strong> — keys look like <code>gsk_…</code>) and save.</li>
+                <li>The header button changes to <code>⚙ API Key ✓</code> — you're done. The key is saved only in this browser's local storage and is sent only to Groq, from your browser directly.</li>
+            </ol>
+            <div class="tip">On the <strong>Audio Analyzer</strong> page there is no key button — that page transcribes and scores through the suite's own server key, so it works with no setup at all.</div>
+        </div>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="card step-card" id="step1">
+        <div class="step-num">1</div>
+        <div class="step-body">
+            <h2>Load the call — audio or transcript</h2>
+            <p>You can feed the Auditor either the <strong>recording</strong> or the <strong>text transcript</strong> — it scores both the same way.</p>
+            <h4>Option A — upload the recording</h4>
+            <ul>
+                <li>Click or drag a file onto the <strong>Upload Call Recording</strong> box.</li>
+                <li><strong>Evaluator:</strong> up to <strong>20 MB</strong> — MP3 recommended, WAV / M4A / MP4 also accepted.</li>
+                <li><strong>Audio Analyzer:</strong> MP3 up to <strong>10 MB</strong> — larger files are automatically compressed in your browser before uploading.</li>
+                <li>A file chip appears with the name, size and duration; press <code>Change</code> to pick a different file. Step 2 opens automatically.</li>
+            </ul>
+            <h4>Option B — paste the transcript</h4>
+            <ul>
+                <li>Click <code>Paste the transcript instead</code> under the upload box.</li>
+                <li>Paste the conversation with agent and customer turns, then continue to step 2 (the call date is pre-filled with today).</li>
+            </ul>
+            <div class="tip">No recording handy? Transcript-only scoring is a first-class path — the AI skips transcription and scores your text directly.</div>
+        </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="card step-card" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-body">
+            <h2>Fill in the Call Information</h2>
+            <ul>
+                <li><strong>Required:</strong> <code>Agent Name *</code> and <code>Call Date *</code> — the report and coaching notes are built around them.</li>
+                <li><strong>Optional:</strong> Customer Name, Customer Phone #, Dealership Name, <code>Call Disposition</code> (e.g. <em>Warm Transfer – Service</em> — the transfer item is scored from it), and the DealerFocus IO call link.</li>
+            </ul>
+            <h4>System &amp; Scheduler Checklist <span style="text-transform:none;font-weight:400;color:var(--muted);">(Evaluator only)</span></h4>
+            <p>Four backstage steps can't be heard on a recording, so <strong>you</strong> verify them in your system before analyzing:</p>
+            <ul>
+                <li>Service OP Code used correctly <em>· item 10</em></li>
+                <li>Correct advisor or team assigned <em>· item 11</em></li>
+                <li>Correct data entered — first name, last name and phone number <em>· item 12</em></li>
+                <li>Hot alert details added &amp; advisor information inputted <em>· item 15</em></li>
+            </ul>
+            <p style="margin-top:8px;">Checked = verified correct (full points). Unchecked = not verified (0 points). The AI follows your checklist — and because these items are <em>yours</em>, they never appear in the Dispute tab.</p>
+        </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="card step-card" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-body">
+            <h2>Run the analysis</h2>
+            <ol>
+                <li>Press <code>🎯 Analyze Call &amp; Generate Score</code>.</li>
+                <li>Watch the progress card: recordings are transcribed first, then scored against the QA form. Transcript-only calls go straight to scoring.</li>
+                <li>The results view replaces the upload card when the report is ready.</li>
+            </ol>
+            <div class="tip">First analysis of a session can take 30–60 seconds (key check + transcription + scoring); long recordings a little more. If the key was rejected, the page tells you exactly what to fix — reopen <code>⚙ API Key</code> and paste a valid key.</div>
+        </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="card step-card" id="step4">
+        <div class="step-num">4</div>
+        <div class="step-body">
+            <h2>Read the report</h2>
+            <ul>
+                <li><strong>Final Grade banner</strong> — grade %, points scored, and the <strong>85% passing threshold</strong>. Parameters marked N/A are removed from the available points, so they never drag the score down.</li>
+                <li><strong>Status line</strong> — <em>✓ Passing — meets the 85% standard</em>, or <em>Below passing — coaching required</em>.</li>
+                <li><strong>⚠ AUTO FAIL banner</strong> — if a zero-tolerance behavior <em>is</em> observed, the grade is forced to <strong>0%</strong> and the call is flagged for PIP enrollment review.</li>
+                <li><strong>Parameter sections</strong> — every item with its points, a status chip (Pass / Partial / Fail / N/A / Auto Fail), the AI's observation and a coaching tip.</li>
+                <li><strong>✓ Strengths Observed · → Areas for Development · ⚠ Concerns</strong> — the call summary.</li>
+                <li><strong>🧭 Coaching Plan</strong> — talking points and action items, plus <strong>📝 Detailed Coaching Notes</strong> ready to paste into a session.</li>
+                <li><strong>📜 View Full Call Transcript</strong> — the transcript the AI scored, for your own verification.</li>
+            </ul>
+            <div class="warn">The report is AI-generated. Always verify the flagged moments against the recording before making coaching or HR decisions.</div>
+        </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="card step-card" id="step5">
+        <div class="step-num">5</div>
+        <div class="step-body">
+            <h2>Fix a score — two ways</h2>
+            <p>Disagree with the AI? You can correct any parameter <strong>manually</strong> or have the AI <strong>re-check</strong> it against the transcript. Both are recorded in the report.</p>
+
+            <div class="sub">
+                <h3><span class="badge">✎ Manual</span>Click the status chip</h3>
+                <p>Click the status chip beside any parameter and pick the correct verdict (Pass / Partial / Fail / N/A). The report — grade, points, status — recomputes instantly. Use this when <em>you</em> verified something against the recording and just need the record corrected.</p>
+            </div>
+
+            <div class="sub">
+                <h3><span class="badge ai">⚖ AI</span>Dispute tab — let the AI re-read the call</h3>
+                <ol style="margin-top:6px;">
+                    <li>Open the <code>⚖️ Dispute a Score</code> tab next to <code>📊 Report</code>.</li>
+                    <li>Every <strong>failed, partial or auto-fail</strong> parameter is listed with the AI's observation. (Auditor-checklist items aren't listed — you set those yourself.)</li>
+                    <li>For each item you disagree with, choose what you believe is correct — e.g. <em>Pass (full pts)</em>, <em>Partial</em>, <em>Fail (0 pts)</em> or <em>N/A — does not apply</em>; zero-tolerance items offer <em>Auto Fail — it DID happen</em> vs <em>Not Observed — it did NOT happen</em> — and add a short reason.</li>
+                    <li>Leave items you accept on <em>— not disputing —</em>, then press <code>🔁 Send disputes for AI re-check</code>.</li>
+                </ol>
+                <p style="margin-top:8px;">The AI re-reads the transcript for each claim and then either <strong>adjusts</strong> the score or <strong>upholds</strong> it, with a written justification shown under the affected rows. The grade recomputes automatically, and a banner above the report summarizes everything, e.g. <em>⚖ 2 AI dispute resolutions (1 changed · 1 upheld) — AI scored 51%, final score 56%</em>.</p>
+            </div>
+
+            <div class="tip">Manual ✎ overrides and AI ⚖ dispute outcomes stack — you can dispute first, then override whatever remains. <code>↩ Reset to AI Scores</code> (see step 6) reverts both kinds of edit in one click.</div>
+        </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="card step-card" id="step6">
+        <div class="step-num">6</div>
+        <div class="step-body">
+            <h2>Export the report — or start over</h2>
+            <ul>
+                <li><code>📋 Copy Evaluation</code> — copies the evaluation as plain text, ready to paste into an email, ticket or coaching doc.</li>
+                <li><code>📥 Download Report (PDF)</code> — saves the report as a PDF exactly as displayed, with all your adjustments applied.</li>
+                <li><code>↩ Reset to AI Scores</code> — appears once you've edited scores; reverts every dispute and manual override back to the original AI verdicts (the analysis itself is kept).</li>
+                <li><code>🔄 Analyze Another Call</code> — clears everything and returns to the upload step for the next call.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="card" id="faq">
+        <div class="card-label">Troubleshooting &amp; FAQ</div>
+
+        <div class="faq-item">
+            <div class="faq-q">"No API key saved…" when I press Analyze.</div>
+            <div class="faq-a">Click <code>⚙ API Key</code> in the header and paste a valid Groq key (free at console.groq.com/keys). The button turns into <code>⚙ API Key ✓</code> once saved. Each browser remembers the key separately, so a new computer needs it pasted once there too.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">"File is X MB — please use a file under 20 MB."</div>
+            <div class="faq-a">The recording exceeds the Evaluator's limit. Trim or re-export it smaller, use the Audio Analyzer (10 MB, auto-compressed), or skip audio entirely with <code>Paste the transcript instead</code>.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">The Call Information card never appeared.</div>
+            <div class="faq-a">It opens after you either select an audio file or click <code>Paste the transcript instead</code>. If you clicked <code>Change</code> / closed the transcript box, step 2 hides again until you load a call.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">Why isn't my checklist item in the Dispute tab?</div>
+            <div class="faq-a">Items 10, 11, 12 and 15 come from <em>your</em> System &amp; Scheduler Checklist, not from the AI — so there is nothing for the AI to re-check. To change them, edit the checkbox on the Call Details step and re-analyze, or click the item's status chip to override it manually.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">The Dispute tab says "nothing to dispute on this call."</div>
+            <div class="faq-a">That means every parameter either passed or was not observed — there are no failed/partial/auto-fail items to re-check.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">The AI upheld a dispute I think is wrong.</div>
+            <div class="faq-a">The AI may decide the original verdict stands — it explains why under the row. You still have the final word: click the parameter's status chip and set it manually; the ✎ marker shows it was your override.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">AUTO FAIL triggered, but the behavior never happened.</div>
+            <div class="faq-a">Open <code>⚖️ Dispute a Score</code>, find the zero-tolerance item, choose <em>Not Observed — it did NOT happen</em> and send it for the AI re-check. If the AI confirms, the 0% and the PIP flag are lifted and the normal grade returns.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q">I edited scores but the numbers look wrong now.</div>
+            <div class="faq-a">N/A items are removed from the available points, so the "out of" total shrinks when something is marked N/A — that's intentional. Press <code>↩ Reset to AI Scores</code> any time you want a clean slate back to the original analysis.</div>
+        </div>
+    </div>
+
+    <!-- SUITE -->
+    <div class="card" id="suite">
+        <div class="card-label">The suite — what else is here</div>
+        <div class="suite-grid">
+            <a class="suite-link" href="index.html">
+                <div class="s-name">🎙️ CSR Call Evaluator</div>
+                <div class="s-desc">Home page. Full 26-parameter QA form, runs in your browser with your own Groq key.</div>
+            </a>
+            <a class="suite-link" href="audio-analyzer.html">
+                <div class="s-name">🎧 Audio Analyzer</div>
+                <div class="s-desc">Same flow with the 18-parameter form — MP3 up to 10 MB (auto-compressed), no API key needed.</div>
+            </a>
+            <a class="suite-link" href="audit-form.html">
+                <div class="s-name">📋 Audit Form</div>
+                <div class="s-desc">The QA rubric in fillable form for manual audits.</div>
+            </a>
+            <a class="suite-link" href="coaching-template.html">
+                <div class="s-name">📝 Coaching Template</div>
+                <div class="s-desc">Structured coaching-session template for the results above.</div>
+            </a>
+            <a class="suite-link" href="landing.html">
+                <div class="s-name">🏠 Suite Landing</div>
+                <div class="s-desc">Overview page linking every tool in the CSR Call Evaluator Suite.</div>
+            </a>
+        </div>
+    </div>
+
+    <p class="ai-note">AI-generated evaluation — always verify against the recording before making coaching or HR decisions.<br>CSR Call Evaluator Suite · How to Use the Auditor</p>
+</div>
+
+</body>
+</html>
