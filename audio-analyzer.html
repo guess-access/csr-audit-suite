@@ -475,6 +475,52 @@
         .status-chip.fail, .status-chip.auto-fail { background: var(--red); color: white; }
         .status-chip.na, .status-chip.not-observed { background: #dde1e9; color: var(--muted); }
 
+        /* REVIEWER OVERRIDE — click a chip to dispute the AI verdict */
+        .status-chip.editable { cursor: pointer; user-select: none; }
+        .status-chip.editable:hover { filter: brightness(1.12); box-shadow: 0 0 0 2px rgba(15, 42, 84, .25); }
+        .status-chip.status-edit {
+            font-family: inherit; text-transform: uppercase; letter-spacing: 0.5px;
+            border: none; outline: none; box-shadow: 0 0 0 2px var(--navy);
+        }
+        .adj-note {
+            font-size: 10.5px; color: var(--muted); margin-top: 4px; font-style: italic;
+        }
+        .adj-banner {
+            display: none; align-items: center; justify-content: space-between; gap: 12px;
+            margin-top: 14px; padding: 10px 14px;
+            background: #fff7e6; border: 1px solid var(--gold); border-radius: 8px;
+            font-size: 13px; color: #7a4b00; font-weight: 600;
+        }
+        .adj-banner.show { display: flex; }
+        .adj-banner .adj-reset {
+            background: none; border: none; color: #7a4b00; text-decoration: underline;
+            cursor: pointer; font-size: 12px; font-family: inherit; white-space: nowrap;
+        }
+
+        /* DISPUTE TAB */
+        .tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+        .tab-btn {
+            padding: 9px 18px; border: 1px solid #d5dae3; border-bottom: none;
+            border-radius: 8px 8px 0 0; background: #eef1f6; color: var(--muted);
+            font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+        }
+        .tab-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+        .dispute-intro { font-size: 13px; color: var(--muted); margin: 4px 0 14px; line-height: 1.5; }
+        .dispute-item {
+            border: 1px solid #e3e7ee; border-radius: 8px; padding: 12px 14px;
+            margin-bottom: 10px; background: #fff;
+        }
+        .di-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; flex-wrap: wrap; }
+        .di-num { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-weight: 600; }
+        .di-controls { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+        .di-select, .di-reason {
+            font-family: inherit; font-size: 12.5px; padding: 6px 8px;
+            border: 1px solid #cfd6e2; border-radius: 6px; background: #fff; color: inherit;
+        }
+        .di-reason { flex: 1; min-width: 220px; }
+        #disputeMsg { display: none; margin-top: 12px; font-size: 13px; color: var(--red); }
+        #disputeMsg.show { display: block; }
+
         /* COACHING */
         .feedback-grid {
             display: grid;
@@ -742,6 +788,12 @@
 
     <!-- RESULTS -->
     <div id="resultsSection">
+        <div class="tabs no-print" id="resultsTabs">
+            <button class="tab-btn active" data-tab="report" type="button">📊 Report</button>
+            <button class="tab-btn" data-tab="dispute" type="button">⚖️ Dispute a Score</button>
+        </div>
+
+        <div id="reportPanel">
         <div id="reportArea">
 
             <div class="grade-banner" id="gradeBanner">
@@ -759,6 +811,10 @@
 
             <div class="autofail-banner" id="autofailBanner">
                 ⚠ AUTO FAIL TRIGGERED — Zero-tolerance behavior observed. Grade is 0% and this call requires PIP enrollment review.
+            </div>
+
+            <div class="adj-banner" id="adjBanner">
+                <span id="adjBannerText">✎ Reviewed</span>
             </div>
 
             <div class="summary-strip" id="summaryStrip"></div>
@@ -804,9 +860,26 @@
             <p class="ai-note">AI-generated evaluation — always verify against the recording before making coaching or HR decisions.</p>
         </div>
 
+        <p class="ai-note">💡 Click any status chip beside a score to override the AI verdict — the report re-grades instantly and the change is recorded in the PDF.</p>
+
         <div class="actions-row" style="margin-top:18px;">
             <button class="btn btn-ghost" id="resetBtn" type="button">🔄 Analyze Another Call</button>
+            <button class="btn btn-ghost" id="adjReset" type="button" style="display:none;">↩ Reset to AI Scores</button>
             <button class="btn btn-primary" id="pdfBtn" type="button">📥 Download Report (PDF)</button>
+        </div>
+        </div><!-- /reportPanel -->
+
+        <div id="disputePanel" style="display:none;">
+            <div class="card">
+                <h3 style="margin-bottom:6px;">⚖️ Dispute an AI Score</h3>
+                <p class="dispute-intro">Think the AI marked a parameter too harshly? Pick the score you believe is correct and say why — the AI re-reads the transcript for each disputed item, decides whether the original verdict stands, and recomputes the report. You can still override any chip manually afterwards.</p>
+                <div id="disputeList"></div>
+                <div class="actions-row" style="margin-top:14px;">
+                    <button class="btn btn-ghost" id="disputeBack" type="button">← Back to report</button>
+                    <button class="btn btn-red" id="disputeSubmit" type="button">🔁 Send disputes for AI re-check</button>
+                </div>
+                <div id="disputeMsg"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -1270,6 +1343,8 @@
                 zero: !!rubric.zero,
                 status,
                 earned,
+                aiStatus: status,   // original AI verdict — kept for the reviewer audit trail
+                aiEarned: earned,
                 observation: typeof m.observation === 'string' ? m.observation.trim() : '',
                 recommendation: typeof m.recommendation === 'string' ? m.recommendation.trim() : ''
             });
@@ -1277,22 +1352,21 @@
             if (rubric.sec <= 4) secEarned[rubric.sec] += earned;
         }
 
-        const total = rows.filter((r) => r.id <= 15).reduce((s, r) => s + r.earned, 0);
-        const autoFail = autoFailItems.length > 0;
-        const grade = autoFail ? 0 : total;
-
         const strArr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
 
-        return {
-            grade,
-            total,
-            passed: !autoFail && grade >= PASSING_THRESHOLD,
-            autoFail,
-            autoFailItems,
+        const result = {
+            grade: 0,
+            total: 0,
+            available: 100,
+            passed: false,
+            autoFail: false,
+            autoFailItems: [],
+            adjustments: 0,
             rows,
             sections: SECTIONS.map((s) => ({
                 ...s,
-                earned: s.zero ? 0 : secEarned[s.id]
+                earned: s.zero ? 0 : secEarned[s.id],
+                available: s.possible
             })),
             reasonForCall: typeof raw.reason_for_call === 'string' ? raw.reason_for_call.trim() : '',
             strengths: strArr(raw.strengths),
@@ -1311,20 +1385,31 @@
                 : [],
             coachingNotes: typeof raw.coaching_notes === 'string' ? raw.coaching_notes.trim() : ''
         };
+        recompute(result);
+        result.aiGrade = result.grade;   // original AI grade — cited in the adjustment banner
+        result.aiTotal = result.total;
+        return result;
     }
 
     /* ---------------- rendering ---------------- */
-    function renderResults() {
+    function renderResults(opts) {
         const r = analysisResults;
         $('progressSection').style.display = 'none';
         $('resultsSection').style.display = 'block';
+
+        // Results always open on the Report tab
+        $('reportPanel').style.display = '';
+        $('disputePanel').style.display = 'none';
+        document.querySelectorAll('#resultsTabs .tab-btn').forEach((b) =>
+            b.classList.toggle('active', b.getAttribute('data-tab') === 'report'));
 
         // Grade banner
         const banner = $('gradeBanner');
         banner.classList.remove('pass', 'fail');
         banner.classList.add(r.passed ? 'pass' : 'fail');
         $('gradeValue').textContent = r.grade + '%';
-        $('ptsLabel').textContent = r.total + ' / 100 pts scored';
+        $('ptsLabel').textContent = r.total + ' / ' + (r.available != null ? r.available : 100) + ' pts' +
+            ((r.available != null && r.available < 100) ? ' available' : ' scored');
         const fill = $('progFill');
         fill.classList.remove('pass', 'fail');
         fill.classList.add(r.passed ? 'pass' : 'fail');
@@ -1338,6 +1423,22 @@
         $('gradeStatus').textContent = statusText;
 
         $('autofailBanner').classList.toggle('show', r.autoFail);
+
+        // Adjustment + dispute notice (travels into the PDF as the audit trail)
+        const adjN = r.adjustments || 0;
+        const dispN = r.rows.filter((row) => row.disputed).length;
+        const bannerParts = [];
+        if (adjN) bannerParts.push(adjN + ' manual adjustment' + (adjN === 1 ? '' : 's'));
+        if (dispN) {
+            bannerParts.push(dispN + ' AI dispute resolution' + (dispN === 1 ? '' : 's') +
+                (r.disputeSummary ? ' (' + r.disputeSummary.adjusted + ' changed · ' + r.disputeSummary.upheld + ' upheld)' : ''));
+        }
+        $('adjBanner').classList.toggle('show', adjN + dispN > 0);
+        if (adjN + dispN > 0) {
+            $('adjBannerText').textContent = '⚖ ' + bannerParts.join(' · ') +
+                ' — AI scored ' + r.aiGrade + '%, final score ' + r.grade + '%';
+        }
+        $('adjReset').style.display = adjN + dispN > 0 ? '' : 'none';
 
         // Summary strip
         const summary = $('summaryStrip');
@@ -1361,22 +1462,39 @@
                 const cls = row.zero
                     ? (row.status === 'auto-fail' ? 'failed' : '')
                     : (row.status === 'pass' ? 'passed' : (row.status === 'fail' ? 'failed' : ''));
-                const ptsText = row.zero
+                const ptsText = (row.zero || row.status === 'na')
                     ? '—'
                     : '<span class="pts-chip">' + row.earned + '<span class="den"> / ' + row.possible + '</span></span>';
-                const statusHTML = '<span class="status-chip ' + esc(row.status) + '">' +
+                const statusHTML = '<span class="status-chip editable ' + esc(row.status) + '" data-row="' + row.id + '"' +
+                    ' role="button" tabindex="0" title="Click to override the AI verdict">' +
                     esc(STATUS_LABELS[row.status] || row.status) + '</span>';
                 const obsHTML = row.observation
                     ? '<div class="row-obs">' + esc(row.observation) + '</div>' : '';
                 const recHTML = row.recommendation
                     ? '<div class="row-rec"><b>Coach:</b> ' + esc(row.recommendation) + '</div>' : '';
+                const verdictLabel = (s, e) => (STATUS_LABELS[s] || s) +
+                    (row.zero ? '' : ' (' + e + '/' + row.possible + ')');
+                let trailHTML = '';
+                if (row.disputed) {
+                    trailHTML += '<div class="adj-note">⚖ ' +
+                        (row.disputeDecision === 'adjusted'
+                            ? 'Dispute resolved — AI: ' + verdictLabel(row.aiStatus, row.aiEarned) +
+                              ' → Adjusted: ' + verdictLabel(row.status, row.earned)
+                            : 'Dispute reviewed — AI re-checked and upheld ' + verdictLabel(row.aiStatus, row.aiEarned)) +
+                        (row.disputeJustification ? ' — &ldquo;' + esc(row.disputeJustification) + '&rdquo;' : '') +
+                        '</div>';
+                }
+                if (row.manual) {
+                    trailHTML += '<div class="adj-note">✎ Manual override — AI: ' + verdictLabel(row.aiStatus, row.aiEarned) +
+                        ' → You: ' + verdictLabel(row.status, row.earned) + '</div>';
+                }
                 return '<div class="qa-row ' + cls + '">' +
                     '<div class="row-num">' + row.id + '</div>' +
                     '<div>' +
                         '<div class="row-title">' + esc(row.title) +
                             (row.criteria ? ' <span class="row-criteria">— ' + esc(row.criteria) + '</span>' : '') +
                         '</div>' +
-                        obsHTML + recHTML +
+                        obsHTML + recHTML + trailHTML +
                     '</div>' +
                     '<div class="row-right">' + ptsText + statusHTML + '</div>' +
                 '</div>';
@@ -1384,7 +1502,7 @@
 
             const ptsLabel = sec.zero
                 ? (r.autoFail ? 'AUTO FAIL' : 'Not triggered')
-                : sec.earned + ' / ' + sec.possible + ' pts';
+                : sec.earned + ' / ' + (sec.available != null ? sec.available : sec.possible) + ' pts';
 
             return '<div class="qa-section">' +
                 '<div class="qa-section-header' + (sec.zero ? ' zero' : '') + '">' +
@@ -1438,8 +1556,285 @@
         $('transcriptBox').textContent = currentTranscript || '—';
 
         setStep(3);
+        if (!opts || !opts.keepScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ---------------- reviewer override + AI disputes ---------------- */
+    let disputeDraft = {};
+
+    // Recompute totals, auto-fail and grade from the current rows. Runs for the AI
+    // verdict and again after every override/dispute so all paths share one
+    // arithmetic: grade = points earned / points available (N/A items removed).
+    function recompute(r) {
+        const secEarned = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const secNa = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const autoFailItems = [];
+        let total = 0, naPts = 0;
+
+        r.rows.forEach((row) => {
+            if (row.zero) {
+                if (row.status === 'auto-fail') autoFailItems.push(row.id);
+                return;
+            }
+            if (row.id <= 15) total += row.earned;
+            if (row.status === 'na') {
+                naPts += row.possible;
+                if (row.sec <= 4) secNa[row.sec] += row.possible;
+            }
+            if (row.sec <= 4) secEarned[row.sec] += row.earned;
+        });
+
+        const autoFail = autoFailItems.length > 0;
+        const available = 100 - naPts;
+        r.total = total;
+        r.available = available;
+        r.autoFail = autoFail;
+        r.autoFailItems = autoFailItems;
+        r.grade = autoFail ? 0 : Math.round(total / Math.max(1, available) * 100);
+        r.passed = !autoFail && r.grade >= PASSING_THRESHOLD;
+        r.adjustments = r.rows.filter((row) => row.manual).length;
+        r.sections.forEach((sec) => {
+            if (sec.zero) return;
+            sec.earned = secEarned[sec.id] || 0;
+            sec.available = sec.possible - (secNa[sec.id] || 0);
+        });
+        return r;
+    }
+
+    function applyStatus(row, status) {
+        row.manual = true;
+        if (row.zero) {
+            row.status = status;                 // 'not-observed' | 'auto-fail'
+            row.earned = 0;
+            return;
+        }
+        row.status = status;
+        row.earned = status === 'pass' ? row.possible
+            : status === 'partial' ? Math.round(row.possible / 2)
+            : 0;                                 // fail / N/A (removed from the available points)
+    }
+
+    function startEdit(rowId) {
+        if (!analysisResults) return;
+        const row = analysisResults.rows.find((x) => x.id === rowId);
+        const chip = document.querySelector('.status-chip[data-row="' + rowId + '"]');
+        if (!row || !chip || chip.tagName === 'SELECT') return;
+
+        const sel = document.createElement('select');
+        sel.className = 'status-chip status-edit ' + row.status;
+        sel.setAttribute('data-row', String(rowId));
+        (row.zero
+            ? [['not-observed', 'Not Observed'], ['auto-fail', 'Auto Fail']]
+            : [['pass', 'Pass'], ['partial', 'Partial'], ['fail', 'Fail'], ['na', 'N/A']]
+        ).forEach((pair) => {
+            const opt = document.createElement('option');
+            opt.value = pair[0];
+            opt.textContent = pair[1];
+            if (pair[0] === row.status) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        chip.replaceWith(sel);
+        sel.focus();
+
+        let done = false;
+        const finish = (apply) => {
+            if (done) return;
+            done = true;
+            if (apply && sel.value !== row.status) {
+                applyStatus(row, sel.value);
+                recompute(analysisResults);
+            }
+            renderResults({ keepScroll: true });
+        };
+        sel.addEventListener('change', () => finish(true));
+        sel.addEventListener('blur', () => finish(false));
+        sel.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { sel.value = row.status; finish(false); }
+        });
+    }
+
+    function showTab(name) {
+        const report = name !== 'dispute';
+        $('reportPanel').style.display = report ? '' : 'none';
+        $('disputePanel').style.display = report ? 'none' : '';
+        document.querySelectorAll('#resultsTabs .tab-btn').forEach((b) =>
+            b.classList.toggle('active', b.getAttribute('data-tab') === name));
+        if (!report) renderDisputeList();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    function renderDisputeList() {
+        const list = $('disputeList');
+        if (!analysisResults) { list.innerHTML = ''; return; }
+        const disputable = analysisResults.rows.filter((row) =>
+            row.status === 'fail' || row.status === 'partial' || row.status === 'auto-fail');
+        if (!disputable.length) {
+            list.innerHTML = '<p class="dispute-intro">Every parameter passed or was not observed — nothing to dispute on this call.</p>';
+            return;
+        }
+        list.innerHTML = disputable.map((row) => {
+            const opts = row.zero
+                ? [['auto-fail', 'Auto Fail — it DID happen'], ['not-observed', 'Not Observed — it did NOT happen']]
+                : [['pass', 'Pass (full ' + row.possible + ' pts)'], ['partial', 'Partial'], ['fail', 'Fail (0 pts)'], ['na', 'N/A — does not apply']];
+            const draft = disputeDraft[row.id] || {};
+            return '<div class="dispute-item">' +
+                '<div class="di-head"><span class="di-num">' + row.id + '</span>' + esc(row.title) +
+                    ' <span class="status-chip ' + esc(row.status) + '">' + esc(STATUS_LABELS[row.status] || row.status) + '</span></div>' +
+                (row.observation ? '<div class="row-obs">AI observation: ' + esc(row.observation) + '</div>' : '') +
+                '<div class="di-controls">' +
+                    '<select class="di-select" data-id="' + row.id + '">' +
+                        '<option value="">— not disputing —</option>' +
+                        opts.map((o) => '<option value="' + o[0] + '"' +
+                            (draft.status === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') +
+                    '</select>' +
+                    '<input class="di-reason" data-id="' + row.id + '" type="text"' +
+                        ' placeholder="Why the AI is wrong (optional but recommended)">' +
+                '</div>' +
+            '</div>';
+        }).join('');
+        list.querySelectorAll('.di-reason').forEach((inp) => {
+            const id = Number(inp.getAttribute('data-id'));
+            if (disputeDraft[id] && disputeDraft[id].reason) inp.value = disputeDraft[id].reason;
+            inp.addEventListener('input', () => {
+                disputeDraft[id] = disputeDraft[id] || {};
+                disputeDraft[id].reason = inp.value;
+            });
+        });
+        list.querySelectorAll('.di-select').forEach((sel) => {
+            sel.addEventListener('change', () => {
+                const id = Number(sel.getAttribute('data-id'));
+                if (sel.value) {
+                    disputeDraft[id] = disputeDraft[id] || {};
+                    disputeDraft[id].status = sel.value;
+                } else {
+                    delete disputeDraft[id];
+                }
+            });
+        });
+    }
+
+    function applyDisputes(claims, resolutions) {
+        const claimById = {};
+        claims.forEach((c) => { claimById[c.id] = c; });
+        const resById = {};
+        resolutions.forEach((d) => { resById[Number(d.id)] = d; });
+
+        let adjusted = 0, upheld = 0;
+        analysisResults.rows.forEach((row) => {
+            const d = resById[row.id];
+            if (!d) return;
+            row.disputed = true;
+            row.disputeDecision = d.decision === 'adjusted' ? 'adjusted' : 'upheld';
+            row.disputeClaim = (claimById[row.id] || {}).claimed_status || '';
+            row.disputeReason = (claimById[row.id] || {}).reason || '';
+            row.disputeJustification = String(d.justification || '');
+            if (row.disputeDecision === 'adjusted') {
+                adjusted++;
+                if (row.zero) {
+                    row.status = String(d.status) === 'auto-fail' ? 'auto-fail' : 'not-observed';
+                    row.earned = 0;
+                } else {
+                    const n = Number(d.score_earned);
+                    row.earned = isFinite(n) ? Math.min(row.possible, Math.max(0, Math.round(n))) : 0;
+                    row.status = String(d.status).toLowerCase() === 'na' ? 'na'
+                        : row.earned >= row.possible ? 'pass'
+                        : row.earned > 0 ? 'partial' : 'fail';
+                }
+            } else {
+                upheld++;
+            }
+        });
+        analysisResults.disputeSummary = { adjusted, upheld };
+        recompute(analysisResults);
+    }
+
+    async function submitDisputes() {
+        const msg = $('disputeMsg');
+        msg.classList.remove('show');
+        const claims = Object.keys(disputeDraft)
+            .map((id) => ({
+                id: Number(id),
+                claimed_status: disputeDraft[id].status || '',
+                reason: String(disputeDraft[id].reason || '').trim()
+            }))
+            .filter((c) => c.claimed_status);
+        if (!claims.length) {
+            msg.textContent = 'Pick the score you believe is correct for at least one parameter first.';
+            msg.classList.add('show');
+            return;
+        }
+        if (!analysisResults || !currentTranscript) {
+            msg.textContent = 'No analyzed call to dispute — run an analysis first.';
+            msg.classList.add('show');
+            return;
+        }
+
+        const btn = $('disputeSubmit');
+        const back = $('disputeBack');
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        back.disabled = true;
+        btn.textContent = '🔍 AI is re-reading the transcript…';
+
+        try {
+            const origMetrics = analysisResults.rows.map((row) => ({
+                id: row.id,
+                status: row.aiStatus,
+                score_earned: row.aiEarned,
+                observation: row.observation
+            }));
+            const res = await postJSON('/api/analyze', {
+                transcript: currentTranscript,
+                metrics: origMetrics,
+                disputes: claims
+            });
+            if (!res || !Array.isArray(res.disputes) || !res.disputes.length) {
+                throw new Error('The AI returned no dispute results — please try again.');
+            }
+            applyDisputes(claims, res.disputes);
+            disputeDraft = {};
+            renderResults();
+            showTab('report');
+        } catch (error) {
+            msg.textContent = 'Dispute re-check failed: ' + (error.message || String(error));
+            msg.classList.add('show');
+        } finally {
+            btn.disabled = false;
+            back.disabled = false;
+            btn.textContent = originalLabel;
+        }
+    }
+
+    // Tab switching
+    document.querySelectorAll('#resultsTabs .tab-btn').forEach((btn) =>
+        btn.addEventListener('click', () => showTab(btn.getAttribute('data-tab'))));
+    $('disputeBack').addEventListener('click', () => showTab('report'));
+    $('disputeSubmit').addEventListener('click', submitDisputes);
+
+    // Chip editing (delegated — survives every re-render)
+    $('sectionsContainer').addEventListener('click', (e) => {
+        const chip = e.target.closest ? e.target.closest('.status-chip[data-row]') : null;
+        if (chip) startEdit(Number(chip.getAttribute('data-row')));
+    });
+    $('sectionsContainer').addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.classList &&
+            e.target.classList.contains('status-chip')) {
+            e.preventDefault();
+            startEdit(Number(e.target.getAttribute('data-row')));
+        }
+    });
+    $('adjReset').addEventListener('click', () => {
+        if (!analysisResults) return;
+        analysisResults.rows.forEach((row) => {
+            row.status = row.aiStatus;
+            row.earned = row.aiEarned;
+            row.manual = false;
+            row.disputed = false;
+        });
+        analysisResults.disputeSummary = null;
+        recompute(analysisResults);
+        renderResults({ keepScroll: true });
+    });
 
     /* ---------------- actions ---------------- */
     $('resetBtn').addEventListener('click', () => {
@@ -1456,6 +1851,8 @@
         $('infoSection').style.display = 'none';
         $('uploadSection').style.display = 'block';
         ['agentName', 'customerName', 'customerPhone', 'dealership', 'disposition'].forEach((id) => { $(id).value = ''; });
+        $('adjReset').style.display = 'none';
+        disputeDraft = {};
         clearMessages();
         setStep(1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
