@@ -334,6 +334,52 @@ Respond ONLY with valid JSON in exactly this shape:
 Rules for the JSON: include all 18 metrics in order with id 1-18; score_earned must follow the rules above; every coaching_suggestions entry must have area, suggestion, and example; respond with JSON only, no markdown, no commentary.`;
 }
 
+// Dispute pass: re-check only the metrics a human reviewer challenged, using the
+// transcript plus the reviewer's claimed scores as context. The transcript stays
+// the final authority, but the reviewer gets a fair hearing on non-audible
+// system actions and genuinely inapplicable steps.
+function buildDisputePrompt(transcript, metrics, disputes) {
+  const orig = (Array.isArray(metrics) ? metrics : [])
+    .filter((m) => m && Number.isInteger(Number(m.id)))
+    .slice(0, 18)
+    .map((m) => ({
+      id: Number(m.id),
+      status: String(m.status || ''),
+      score_earned: Number(m.score_earned) || 0,
+      observation: String(m.observation || '').slice(0, 220),
+    }));
+  return `You are a QA auditor for a dealership customer service team. A human reviewer has challenged some of the original AI verdicts on this call. Re-check ONLY the disputed metrics against the transcript.
+
+Transcript:
+"""
+${transcript}
+"""
+
+ORIGINAL VERDICTS (JSON):
+${JSON.stringify(orig)}
+
+REVIEWER DISPUTES (JSON — the reviewer's claimed score for each disputed metric):
+${JSON.stringify(disputes)}
+
+FORM RULES (apply exactly):
+- Metrics 1-8 are BINARY: "pass" = full points (1:10, 2:10, 3:8, 4:8, 5:8, 6:8, 7:5, 8:8), otherwise 0.
+- Metric 9 (Hold Procedure, 5 pts): "pass", "fail", or "na" if no hold occurred (na = 0 pts).
+- Metrics 10-15 (5 pts each): "pass" = 5, "partial" = 3, "fail" = 0.
+- Metrics 16-18 are ZERO TOLERANCE (0 pts): "auto-fail" only if the behavior is clearly present in the transcript, else "not-observed".
+- Metric meanings: 1 dealership name, 2 agent name, 3 reason for transfer, 4 customer name, 5 intro to Service/Parts before transferring, 6 warm transfer (hold 3 rings, wait for answer), 7 data entered correctly (first/last name + phone), 8 correct disposition, 9 hold procedure, 10 communication & delivery, 11 empathy, 12 active listening, 13 tone of voice, 14 efficiency, 15 confidence, 16 rudeness, 17 service fail, 18 call avoidance.
+
+TASK — for EACH disputed id only:
+1. Re-read the transcript evidence for that metric.
+2. Weigh the reviewer's claimed score and reason. The transcript is the final authority, but be fair to the reviewer: metrics that genuinely do not apply to this call (for example transfer steps on a call with no transfer) should be "adjusted" to "na"; system actions that cannot be heard (data entry, disposition, hold timing) should be "adjusted" when the reviewer plausibly explains what actually happened.
+3. Decide: "upheld" (the original verdict stands) or "adjusted" (the original verdict was wrong).
+4. If adjusted, give the corrected "status" and "score_earned" following the form rules exactly.
+5. "justification": one sentence citing transcript evidence or accepting the reviewer's reasoning.
+
+Respond ONLY with valid JSON:
+{"disputes":[{"id":3,"decision":"upheld|adjusted","status":"corrected status","score_earned":0,"justification":"one sentence"}]}
+Include exactly one entry per disputed id, in the same order, with no other text.`;
+}
+
 function extractJson(text) {
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) return null;
@@ -379,12 +425,24 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON body' }) };
   }
 
-  const { transcript, agentName, callDate } = payload;
+  const { transcript, agentName, callDate, disputes, metrics } = payload;
   if (!transcript || !transcript.trim()) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing "transcript" in request body' }) };
   }
 
-  const prompt = buildPrompt(agentName, callDate, transcript);
+  // Optional dispute pass: re-check only the metrics a reviewer challenged.
+  const disputeList = (Array.isArray(disputes) ? disputes : [])
+    .filter((d) => d && Number.isInteger(Number(d.id)) && Number(d.id) >= 1 && Number(d.id) <= 18)
+    .slice(0, 18)
+    .map((d) => ({
+      id: Number(d.id),
+      claimed_status: String(d.claimed_status || '').toLowerCase().trim().slice(0, 20),
+      reason: String(d.reason || '').slice(0, 500),
+    }));
+
+  const prompt = disputeList.length
+    ? buildDisputePrompt(transcript, metrics, disputeList)
+    : buildPrompt(agentName, callDate, transcript);
 
   try {
     let rawText;
@@ -401,8 +459,31 @@ exports.handler = async (event) => {
       return {
         statusCode: 502,
         headers,
-        body: JSON.stringify({ error: `${provider} did not return a parseable analysis` }),
+        body: JSON.stringify({ error: `${provider} did not return a parseable ${disputeList.length ? 'dispute response' : 'analysis'}` }),
       };
+    }
+
+    if (disputeList.length) {
+      const out = Array.isArray(parsed.disputes) ? parsed.disputes : [];
+      if (!out.length) {
+        return {
+          statusCode: 502,
+          headers,
+          body: JSON.stringify({ error: `${provider} did not return a parseable dispute response` }),
+        };
+      }
+      // Scores are always recomputed with the QA form's arithmetic.
+      const resolutions = disputeList.map((d) => {
+        const hit = out.find((x) => x && Number(x.id) === d.id) || {};
+        const decision = String(hit.decision || '').toLowerCase().trim() === 'adjusted' ? 'adjusted' : 'upheld';
+        const justification = typeof hit.justification === 'string' ? hit.justification.trim() : '';
+        if (decision === 'adjusted') {
+          const m = normalizeMetric(d.id, hit);
+          return { id: d.id, decision, status: m.status, score_earned: m.score_earned, justification };
+        }
+        return { id: d.id, decision: 'upheld', justification };
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ disputes: resolutions, provider }) };
     }
 
     // Scores are always recomputed with the QA form's arithmetic.
